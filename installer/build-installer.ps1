@@ -4,7 +4,7 @@ param([switch]$SkipPublish, [string]$Iscc)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'meeting/TeamWeeklyMeeting.csproj'
-$payload = Join-Path $root 'dist/app'
+$payload = Join-Path $root 'dist/app-web'
 [xml]$projectXml = Get-Content -LiteralPath $project
 $version = [string]$projectXml.Project.PropertyGroup.Version
 
@@ -16,10 +16,10 @@ if (-not $SkipPublish) {
 }
 if (-not (Test-Path (Join-Path $payload 'TeamWeeklyMeeting.exe'))) { throw 'Application payload is missing' }
 $privateFiles = Get-ChildItem -LiteralPath $payload -Recurse -File | Where-Object {
-    $_.Name -in @('connection.json', 'meeting.json', 'Cookies') -or $_.Extension -eq '.log' -or $_.Name -match '\.log\.\d+$' -or $_.FullName -match '[\\/]WebView2[\\/]'
+    $_.Name -in @('connection.json', 'connection.example.json', 'meeting.json', 'Cookies', 'MySqlConnector.dll', 'TaskCalendarWidget.dll') -or $_.Extension -eq '.log' -or $_.Name -match '\.log\.\d+$' -or $_.FullName -match '[\\/]WebView2[\\/]'
 }
 if ($privateFiles) { throw 'Private configuration/session/log files found in the payload. Use a clean publish directory.' }
-Copy-Item -LiteralPath (Join-Path $root 'connection.example.json'), (Join-Path $root 'README.md'), (Join-Path $root 'LICENSE') -Destination $payload -Force
+Copy-Item -LiteralPath (Join-Path $root 'README.md'), (Join-Path $root 'LICENSE') -Destination $payload -Force
 Copy-Item -LiteralPath (Join-Path $root 'meeting/DIAGNOSTICS.md') -Destination $payload -Force
 foreach ($name in @('VALIDATION.md','CHANGELOG.md','PROVENANCE.md')) {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination $payload -Force

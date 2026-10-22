@@ -10,7 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
-using static TaskCalendarWidget.MeetingIntegration;
+using static TeamWeeklyMeeting.NetcusText;
 
 namespace TeamWeeklyMeeting;
 

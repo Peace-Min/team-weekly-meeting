@@ -8,5 +8,6 @@
 - Full-screen presentation with keyboard navigation, mouse drag/wheel and Esc.
 - Shared local preferences, rotating diagnostic logs and contact dialog.
 - Company logo and transparent taskbar icon that fills the native icon area.
-- Public source without database credentials, user data or browser sessions.
+- Organization and users extracted from the authenticated weekly-report page; no DB connection, driver or configuration.
+- Public source without user data or browser sessions.
 - Per-user Windows x64 installer with self-contained .NET and offline WebView2 runtime.

@@ -25,7 +25,10 @@ SetupIconFile=..\meeting\Assets\company.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=..\dist\installer
 OutputBaseFilename=NETCUS-TeamWeeklyMeeting-Setup-v{#MyAppVersion}-win-x64
-Compression=lzma2
+; Keep the offline-runtime build usable on machines with limited free memory.
+Compression=lzma2/fast
+LZMANumBlockThreads=1
+LZMADictionarySize=8192
 SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
@@ -39,7 +42,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "바탕화면 바로가기 만들기"; GroupDescription: "바로가기:"
 
 [Files]
-Source: "..\dist\app\*"; DestDir: "{app}"; Excludes: "*.pdb,*.xml"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\app-web\*"; DestDir: "{app}"; Excludes: "*.pdb,*.xml"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\redist\{#RuntimeFile}"; Flags: dontcopy
 
 [Icons]
@@ -49,7 +52,7 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{#MyAppName} 실행"; Flags: nowait postinstall skipifsilent
 
-; Preferences, connection settings, logs and sessions in APPDATA are preserved.
+; Preferences, logs and sessions in APPDATA are preserved.
 [Code]
 function HasRuntime(Root: Integer): Boolean;
 var

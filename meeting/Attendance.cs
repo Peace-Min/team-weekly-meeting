@@ -72,8 +72,7 @@ internal sealed partial class MeetingWindow
             _loginId = _pendingLoginId;
 
         }
-        string json = _smoke ? FixtureDirectory : await TaskCalendarWidget.MeetingIntegration.LoadDirectoryAsync(_loginId, message=>AppLog.Write("directory.db",new{message}));
-        SetDirectory(MeetingDirectory.Parse(json));
+        SetDirectory(await ReadPageDirectoryAsync());
         SaveMeetingSettings();
         _pendingLoginId = "";
         _login.Visibility = Visibility.Hidden;

@@ -17,7 +17,5 @@
     <Resource Include="Assets/company.ico" />
     <Resource Include="Assets/company-app-icon.png" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
-    <PackageReference Include="MySqlConnector" Version="2.3.7" />
-    <Compile Include="../integration/*.cs" Link="Integration/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

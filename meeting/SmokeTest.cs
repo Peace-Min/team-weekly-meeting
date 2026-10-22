@@ -42,9 +42,7 @@ internal sealed partial class MeetingWindow
                 else if (id == "expired") body = "<input type=password>";
                 else
                 {
-                    string links = "<nav><a href='pjm.jsp?id=alpha'>테스트 가</a> <a href='pjm.jsp?id=beta'>테스트 나</a>"
-                        + "<a href='https://example.org/pjm/pjm.jsp?id=external'>외부</a>"
-                        + "<a href='pjm.jsp?id=alpha'>중복</a></nav>";
+                    string links = FixtureOrgMenu;
                     body = links + "<form><input type=hidden name=table_code value=report_tbl></form>";
                     if (id != "empty") body += "<table><tr><td><a href=\"javascript:go_view('"
                         + (id == "alpha" ? "7" : "8") + "')\">맨 위 보고서</a></td><td>2026-10-22</td></tr>"
@@ -82,6 +80,24 @@ internal sealed partial class MeetingWindow
         if (!condition) throw new InvalidOperationException(message);
     }
 
+    private const string FixtureOrgMenu = """
+        <a href='pjm.jsp?id=outside'>주간</a>
+        <span id='submenu1'><table>
+          <tr><td colspan='2' bgcolor='#8F8F8F'><font face='Wingdings'>w</font><b>개발팀</b></td></tr>
+          <tr><td></td><td><a href='/pjm/pjm.jsp?id=alpha'>김민준 책임</a></td></tr>
+          <tr><td colspan='2' bgcolor='#EFEFEF'><b>플랫폼파트</b></td></tr>
+          <tr><td></td><td><a href='/pjm/pjm.jsp?id=beta'>이서연 선임</a></td></tr>
+          <tr><td></td><td><a href='/pjm/pjm.jsp?id=empty'>박지호 연구원</a></td></tr>
+          <tr><td colspan='2' bgcolor='#EFEFEF'><b>플랫폼파트</b></td></tr>
+          <tr><td></td><td><a href='/pjm/pjm.jsp?id=beta'>이서연 선임</a></td></tr>
+          <tr><td><a href='https://example.org/pjm/pjm.jsp?id=external'>외부 인원</a></td></tr>
+          <tr><td colspan='2' bgcolor='#8F8F8F'><b>검증팀</b></td></tr>
+          <tr><td></td><td><a href='/pjm/pjm.jsp?id=denied'>접근 확인</a></td></tr>
+          <tr><td></td><td><a href='/pjm/pjm.jsp?id=expired'>세션 확인</a></td></tr>
+        </table></span>
+        <span id='submenu2'><a href='/pjm/pjm_work.jsp?id=not-weekly'>다른 메뉴</a></span>
+        """;
+
     private const string FixtureDirectory = """
         {"found":true,"myUnit":"개발팀","units":[
           {"name":"회사","parent":null,"sortOrder":0},
@@ -115,6 +131,25 @@ internal sealed partial class MeetingWindow
         Check(await SignInAsync(), "로그인 전용 창에서 인증 성공 후 자동 닫기");
         Check(await CheckSessionAsync(), "로그인 후 세션 확인");
         await LoadDirectoryAsync();
+        Check(_directory.Units.Length==3 && _directory.Members.Length==5,"실제 로그인 페이지 DOM에서 조직과 구성원 추출, 중복과 외부 링크 제외");
+        Check(_directory.Members.Single(m=>m.Id=="alpha").Unit=="개발팀" && _directory.Members.Single(m=>m.Id=="beta").Unit=="플랫폼파트","페이지의 조직 제목 다음 구성원을 해당 조직에 배정");
+        Check(_directory.Units.Single(u=>u.Name=="플랫폼파트").Parent=="개발팀" && _directory.Units.Single(u=>u.Name=="검증팀").Parent=="","사이트의 본부·하위 팀 구분과 형제 조직 순서 유지");
+        async Task<string> ReadMarkup(string markup,string id="alpha") => await _login.CoreWebView2.ExecuteScriptAsync(
+            DirectoryExtractFunction+"(new DOMParser().parseFromString("+JsonSerializer.Serialize(markup)+",'text/html'),"+JsonSerializer.Serialize(id)+")");
+        using(var missing=JsonDocument.Parse(await ReadMarkup("<form><input name=id></form>")))
+            Check(!missing.RootElement.GetProperty("found").GetBoolean(),"조직 메뉴가 없으면 DB나 고정 명단으로 대체하지 않고 실패 처리");
+        using(var signedOut=JsonDocument.Parse(await ReadMarkup("<input type=password>"+FixtureOrgMenu)))
+            Check(!signedOut.RootElement.GetProperty("found").GetBoolean(),"로그인 폼에서는 조직도 추출 거부");
+        var otherPage=MeetingDirectory.Parse(await ReadMarkup(FixtureOrgMenu.Replace("id=alpha","id=changed"),"changed"));
+        Check(otherPage.Members.Any(m=>m.Id=="changed") && otherPage.Members.All(m=>m.Id!="alpha"),"페이지 사용자 정보 변경을 직접 반영, 이전 명단 사용 안 함");
+        string? capturedPage=Environment.GetEnvironmentVariable("TEAM_MEETING_DIRECTORY_HTML");
+        if(!string.IsNullOrEmpty(capturedPage))
+        {
+            var actual=MeetingDirectory.Parse(await ReadMarkup(File.ReadAllText(capturedPage)));
+            Check(actual.Members.First().Unit==actual.Units.First().Name && actual.Units.Length>1,"사용자가 제공한 실제 페이지에서 첫 조직 직속 인력과 전체 메뉴 추출");
+            Check(actual.Units.Select(u=>u.Name).Distinct().Count()==actual.Units.Length && actual.Members.Select(m=>m.Id).Distinct().Count()==actual.Members.Length,"실제 페이지의 반복 조직과 사용자 중복 제거");
+            AppLog.Write("qa.page-source",new{units=actual.Units.Length,members=actual.Members.Length});
+        }
         Check(_loginId == "alpha", "로그인 아이디 연결, 비밀번호 수집 없음");
         Check((string?)_team.SelectedItem == "개발팀", "본인 팀 기본 선택");
         Check(Icon is System.Windows.Media.Imaging.BitmapSource iconSource && iconSource.PixelWidth>=256 && Application.Current.Resources.Contains("BrandOrange"),"작업표시줄 축소 방지용 고해상도 회사 아이콘 및 브랜드 스타일 적용");

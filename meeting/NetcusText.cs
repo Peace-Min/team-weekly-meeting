@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
-namespace TaskCalendarWidget
+namespace TeamWeeklyMeeting
 {
     // netcus 크롤/전송에서 쓰는 DOM/WebView 무의존 '순수 정적' 요소 모음(행위보존 추출 Phase1).
     // 날짜/기간 파싱 · JS 스니펫 생성 · 추출 스크립트 상수 · JSON 이스케이프 · 응답 DTO.

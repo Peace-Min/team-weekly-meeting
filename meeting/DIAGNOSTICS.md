@@ -18,7 +18,7 @@
 3. `browser.navigation-start/end`의 페이지 경로·탐색 번호·성공 여부·WebErrorStatus와 `report.opened/failed`를 대조합니다.
 4. `presentation.start/key/end`, `browser.input`으로 보고 모드 전환, 키 이동, 드래그·휠 이후 스크롤 위치를 재구성합니다.
 5. `action.failed`, `browser.process-failed`, `app.*-failed`, `app.unhandled`, `app.fatal`의 예외 종류·메시지·스택을 확인합니다.
-6. 조직도 문제는 `directory.loaded`의 조직 부모·순서·구성원 소속과 `directory.db`의 DB 조회 결과를 확인합니다.
+6. 조직도 문제는 `directory.page`의 웹페이지 추출 건수와 `directory.loaded`의 조직 부모·순서·구성원 소속을 확인합니다. `directory.page-failed`는 로그인 폼·주간 메뉴 누락·빈 메뉴를 구분합니다. DB에는 접속하지 않습니다.
 
 `action.end`에는 소요 시간과 최종 상태가 있습니다. 설정 읽기·저장 오류, 로그인 취소, 문의창 열기·복사·로그 폴더 열기도 기록합니다.
 휠 입력은 묶어서 기록하여 과도한 로그를 줄입니다. 로그 경로가 기록된 폴더에서 전체 파일을 받으면 회전 직전의 동작도 분석할 수 있습니다.
