@@ -5,7 +5,7 @@
 
 ## 설치와 실행
 
-1. [Releases](https://github.com/Peace-Min/team-weekly-meeting/releases)에서 `NETCUS-TeamWeeklyMeeting-Setup-v1.0.0-win-x64.exe`를 내려받아 설치합니다.
+1. 아래 명령으로 이 PC에서 앱과 설치 패키지를 함께 빌드합니다. 생성한 설치 EXE를 폐쇄망 PC로 반입해 설치합니다. GitHub Releases 다운로드는 필요하지 않습니다.
 2. 앱을 실행해 사내 계정으로 로그인합니다. 로그인한 페이지에서 조직도와 구성원을 자동으로 읽습니다.
 3. 팀과 오늘 참석자를 체크한 뒤 **참석자 보고서 준비**를 누릅니다.
 4. **보고 시작**으로 전체 화면 발표를 시작합니다. 방향키·PageUp/PageDown으로 발표자를 바꾸고, 드래그·휠로 본문을 스크롤합니다. **Esc**로 종료합니다.
@@ -39,19 +39,31 @@ Windows 10 1809 이상 또는 Windows 11의 x64 환경을 대상으로 합니다
 
 ## 개발과 배포 빌드
 
-필요 도구: Windows, .NET SDK 9.0.319, PowerShell 7, Inno Setup 6.
+필요 도구: Windows, .NET SDK 9.0.319, Inno Setup 6. 설치기 생성에는 Windows 기본 PowerShell 5.1을 사용합니다.
+
+저장소 루트에서 **이 명령 한 번으로 앱 publish와 Inno Setup 설치기 생성이 모두 실행됩니다.**
+
+```powershell
+dotnet publish meeting/TeamWeeklyMeeting.csproj -c Release -r win-x64 -o publish/win-x64 --self-contained true
+```
+
+앱 파일은 `publish/win-x64/`, 설치 패키지는 `dist/installer/NETCUS-TeamWeeklyMeeting-Setup-v1.0.0-win-x64.exe`에 생성됩니다.
+이 PC에서 빌드한 설치 EXE만 폐쇄망에 반입하면 됩니다. .NET과 WebView2 런타임을 포함하므로 설치 대상 PC에서 별도 다운로드하지 않습니다.
+소스 빌드 PC는 NuGet 패키지 복원이 가능해야 하며, WebView2 오프라인 설치기가 없으면 Microsoft 배포 서버에서 한 번 받습니다. 저장소에 분할 파일이나 Git LFS 파일을 올리지 않습니다.
+
+개발·QA용 명령:
 
 ```powershell
 dotnet build meeting/TeamWeeklyMeeting.csproj -c Release
 dotnet run --project meeting/TeamWeeklyMeeting.csproj -- --smoke-test
 Get-Content "$env:TEMP/TeamWeeklyMeeting-smoke-result.txt"
 pwsh -File tools/build-meeting-icon.ps1
-pwsh -File installer/build-installer.ps1
-pwsh -File tools/test-release.ps1
+pwsh -File tools/test-release.ps1 -ExePath publish/win-x64/TeamWeeklyMeeting.exe
 ```
 
 자동 QA는 로컬 합성 조직도·인증·보고서로 실행하며 사내 DB와 사이트에 접속하지 않습니다.
-빌드 시 NuGet과 Microsoft WebView2 배포 서버에 접속합니다. WebView2 재배포 파일의 Microsoft 서명을 확인합니다.
+설치기를 따로 다시 만들 때는 `powershell -File installer/build-installer.ps1 -SkipPublish -PayloadDir publish/win-x64`를 사용합니다. 앱만 publish하려면 위 명령에 `-p:BuildInstaller=false`를 추가합니다. QA 도구는 PowerShell 7을 사용합니다.
+WebView2 재배포 파일의 Microsoft 서명을 확인합니다.
 산출물은 `dist/installer/`의 설치 EXE와 SHA-256 파일입니다. 빌드 폴더나 설치기에 사용자 설정·로그·브라우저 세션을 넣지 마세요.
 
 기존 캘린더에서 가져온 코드와 로고 출처는 [PROVENANCE](PROVENANCE.md), 변경 내역은 [CHANGELOG](CHANGELOG.md)에 기록했습니다.

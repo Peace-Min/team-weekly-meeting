@@ -48,10 +48,10 @@ Windows 아이콘은 흰 배경을 투명 처리하고 추가 여백 없이 원�
 ```powershell
 dotnet build meeting/TeamWeeklyMeeting.csproj -c Release
 dotnet run --project meeting/TeamWeeklyMeeting.csproj
-dotnet publish meeting/TeamWeeklyMeeting.csproj -c Release -o dist/team-weekly-meeting
+dotnet publish meeting/TeamWeeklyMeeting.csproj -c Release -r win-x64 -o publish/win-x64 --self-contained true
 ```
 
-배포용 설치기는 저장소 루트에서 `pwsh -File installer/build-installer.ps1`로 생성합니다. 수동 publish 폴더를 옮길 경우 폴더 전체를 복사합니다.
+위 publish 명령은 Inno Setup을 자동 실행하여 `dist/installer/`에 설치 패키지까지 생성합니다. 생성한 설치 EXE를 폐쇄망에 반입해 사용합니다. 수동 publish 폴더를 옮길 경우 폴더 전체를 복사합니다.
 
 ## 자동 QA
 

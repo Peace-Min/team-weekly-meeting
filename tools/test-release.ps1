@@ -1,6 +1,6 @@
 #requires -Version 7
 [CmdletBinding()]
-param([string]$ExePath = "$PSScriptRoot/../dist/app-web/TeamWeeklyMeeting.exe")
+param([string]$ExePath = "$PSScriptRoot/../publish/win-x64/TeamWeeklyMeeting.exe")
 $ErrorActionPreference = 'Stop'
 $dependencyFile = [System.IO.Path]::ChangeExtension((Resolve-Path -LiteralPath $ExePath).Path, '.deps.json')
 if ((Get-Content -LiteralPath $dependencyFile -Raw) -match 'MySqlConnector|TaskCalendarWidget') { throw 'Unexpected database/calendar assembly dependency' }

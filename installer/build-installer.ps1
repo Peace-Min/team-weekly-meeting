@@ -1,16 +1,21 @@
-#requires -Version 7
+#requires -Version 5.1
 [CmdletBinding()]
-param([switch]$SkipPublish, [string]$Iscc)
+param([switch]$SkipPublish, [string]$Iscc, [string]$PayloadDir)
 $ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    # Prefer built-in 5.1 modules when the parent shell is PowerShell 7.
+    $env:PSModulePath = "$PSHOME\Modules;" + [Environment]::GetEnvironmentVariable('PSModulePath','Machine')
+}
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'meeting/TeamWeeklyMeeting.csproj'
-$payload = Join-Path $root 'dist/app-web'
+$payload = if ($PayloadDir) { [IO.Path]::GetFullPath($PayloadDir) } else { Join-Path $root 'dist/app-web' }
+$payload = $payload.TrimEnd([char[]]"\/")
 [xml]$projectXml = Get-Content -LiteralPath $project
 $version = [string]$projectXml.Project.PropertyGroup.Version
 
 if (-not $SkipPublish) {
     & dotnet publish $project -c Release -r win-x64 --self-contained true `
-        -p:RuntimeFrameworkVersion=9.0.17 -p:TargetLatestRuntimePatch=false `
+        -p:BuildInstaller=false `
         -p:PublishSingleFile=false -o $payload
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
 }
@@ -44,7 +49,7 @@ if (-not $Iscc) {
     if (-not $Iscc) { $Iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source }
 }
 if (-not $Iscc) { throw 'Install Inno Setup 6 or pass -Iscc <path>' }
-& $Iscc "/DMyAppVersion=$version" (Join-Path $PSScriptRoot 'team-weekly-meeting.iss')
+& $Iscc /Qp "/DMyAppVersion=$version" "/DAppPublishDir=$payload" (Join-Path $PSScriptRoot 'team-weekly-meeting.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
 $output = Join-Path $root "dist/installer/NETCUS-TeamWeeklyMeeting-Setup-v$version-win-x64.exe"
 $hash = (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash.ToLowerInvariant()

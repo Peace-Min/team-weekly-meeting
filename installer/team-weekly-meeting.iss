@@ -1,6 +1,9 @@
 #ifndef MyAppVersion
   #define MyAppVersion "1.0.0"
 #endif
+#ifndef AppPublishDir
+  #define AppPublishDir "..\dist\app-web"
+#endif
 #define MyAppName "NETCUS 팀 주간보고"
 #define MyAppExeName "TeamWeeklyMeeting.exe"
 #define RuntimeFile "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
@@ -42,7 +45,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "바탕화면 바로가기 만들기"; GroupDescription: "바로가기:"
 
 [Files]
-Source: "..\dist\app-web\*"; DestDir: "{app}"; Excludes: "*.pdb,*.xml"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#AppPublishDir}\*"; DestDir: "{app}"; Excludes: "*.pdb,*.xml"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\redist\{#RuntimeFile}"; Flags: dontcopy
 
 [Icons]

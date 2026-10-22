@@ -2,6 +2,9 @@
 
 Validated on Windows on 2026-10-22.
 
+- One-command packaging: `dotnet publish meeting/TeamWeeklyMeeting.csproj -c Release -r win-x64 -o publish/win-x64 --self-contained true` exited successfully after creating both the app and installer. The Inno Setup hook ran exactly once through Windows PowerShell 5.1.
+- The generated installer used the selected `publish/win-x64` payload, verified by installed file hashes and the updated packaged documentation. Its installed app passed 110 checks (including the private HTML fixture), the native icon audit and uninstall/settings-preservation checks.
+
 - Independent .NET 9 Release build: no warnings or errors.
 - Synthetic WebView2 smoke QA plus the privately supplied page HTML: **110 checks passed**, 80 intercepted requests, 9 synthetic report POSTs. No live site/DB access in this suite. Without the optional private HTML fixture, 108 checks run.
 - Runtime taskbar audit: the logo fills **32×30px of the 32×32px native icon**, with transparent corners. This checks the running window's `WM_GETICON` result, not just the ICO file.
