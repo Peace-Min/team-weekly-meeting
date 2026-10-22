@@ -2,6 +2,9 @@
 
 Validated on Windows on 2026-10-22.
 
+- `build-installer.cmd` was executed end to end: publish succeeded, Inno Setup created the installer, and the batch printed the output directory and exited successfully.
+- SDK compatibility: the fixed 9.0.319 SDK requirement was replaced by selection of installed stable .NET 9 SDKs. A separate SDK 9.0.302 build completed with zero warnings/errors; the default environment selected 9.0.319 successfully.
+
 - One-command packaging: `dotnet publish meeting/TeamWeeklyMeeting.csproj -c Release -r win-x64 -o publish/win-x64 --self-contained true` exited successfully after creating both the app and installer. The Inno Setup hook ran exactly once through Windows PowerShell 5.1.
 - The generated installer used the selected `publish/win-x64` payload, verified by installed file hashes and the updated packaged documentation. Its installed app passed 110 checks (including the private HTML fixture), the native icon audit and uninstall/settings-preservation checks.
 

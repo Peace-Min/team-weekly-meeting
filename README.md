@@ -39,7 +39,9 @@ Windows 10 1809 이상 또는 Windows 11의 x64 환경을 대상으로 합니다
 
 ## 개발과 배포 빌드
 
-필요 도구: Windows, .NET SDK 9.0.319, Inno Setup 6. 설치기 생성에는 Windows 기본 PowerShell 5.1을 사용합니다.
+필요 도구: Windows, .NET 9 SDK, Inno Setup 6. 설치기 생성에는 Windows 기본 PowerShell 5.1을 사용합니다. `global.json`은 설치된 .NET 9 SDK 중 최신 버전을 사용하므로 9.0.301·9.0.315 등으로도 빌드할 수 있습니다.
+
+저장소 루트의 **`build-installer.cmd`를 더블클릭**하면 앱 publish 후 Inno Setup으로 설치 패키지까지 자동 생성합니다. 완료 또는 오류 메시지를 확인할 수 있도록 창을 유지합니다.
 
 저장소 루트에서 **이 명령 한 번으로 앱 publish와 Inno Setup 설치기 생성이 모두 실행됩니다.**
 
