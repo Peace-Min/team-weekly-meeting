@@ -68,4 +68,3 @@ pwsh -File tools/test-release.ps1 -ExePath 'C:\path\to\TeamWeeklyMeeting.exe'
 
 The app and installer are unsigned. Live employee logins and network access remain
 environment-specific. Organization data comes from the authenticated page, with no DB dependency.
-

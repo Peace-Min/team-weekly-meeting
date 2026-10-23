@@ -42,7 +42,7 @@ internal sealed partial class MeetingWindow
                 using var message = JsonDocument.Parse(e.WebMessageAsJson);
                 if(message.RootElement.GetProperty("kind").GetString()=="meeting-credential")
                 {
-                    if(!_captureLoginSecrets || !Uri.TryCreate(e.Source,UriKind.Absolute,out var origin) || origin.AbsolutePath!="/pjm/login.htm")return;
+                    if(!_captureLoginSecrets || !Uri.TryCreate(e.Source,UriKind.Absolute,out var origin) || origin.AbsolutePath is not ("/pjm/login.htm" or "/pjm/loginRSA.jsp"))return;
                     var value=new LoginCredential{Id=message.RootElement.GetProperty("id").GetString()??"",Password=message.RootElement.GetProperty("password").GetString()??""};
                     if(value.IsValid)_pendingCredential=value;
                     return;

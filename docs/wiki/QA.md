@@ -85,4 +85,3 @@ pwsh -File tools/test-release.ps1 -ExePath meeting/bin/Release/net9.0-windows/Te
 - PASS: 로그아웃 후 재실행 조건에서도 자동 인증 없음
 - PASS: 진단 로그에 비밀번호·RSA 필드·쿠키 없음
 - PASS: 비밀 없이 인증 성공·실패·로그아웃 진단 기록
-

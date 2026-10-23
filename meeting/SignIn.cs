@@ -66,7 +66,7 @@ internal sealed partial class MeetingWindow
             if(checking||accepted||_closing||!dialog.IsVisible)return;
             checking=true;
             try{
-                string actor=await AuthenticatedIdAsync();if(actor.Length==0)return;
+                string actor=await AuthenticatedIdAsync();if(actor.Length==0){_pendingCredential=null;return;}
                 if(_pendingLoginId.Length>0&&actor!=_pendingLoginId){notice.Text="입력한 계정과 인증된 계정이 다릅니다. 다시 로그인해 주세요.";return;}
                 _pendingLoginId=actor;
                 try{
@@ -105,6 +105,8 @@ internal sealed partial class MeetingWindow
                 if(_smokeRejectFirst){
                     byte[] original=File.ReadAllBytes(_auth.PathName);_fixtureAuthMode="rejected";
                     await NavigateAsync(core,()=>_ = core.ExecuteScriptAsync(submit.Replace(SmokePassword,SmokePassword+"-wrong")));
+                    await Task.Delay(100);
+                    Require(_pendingCredential==null,"인증 실패한 입력은 메모리에서도 폐기");
                     Require(System.Linq.Enumerable.SequenceEqual(original,File.ReadAllBytes(_auth.PathName)),"인증 실패 입력으로 기존 저장 정보를 덮어쓰지 않음");
                     _fixtureAuthMode="success";await OpenPageAsync();
                 }
