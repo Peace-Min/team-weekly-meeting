@@ -23,6 +23,8 @@
 
 `action.end`에는 소요 시간과 최종 상태가 있습니다. 설정 읽기·저장 오류, 로그인 취소, 문의창 열기·복사·로그 폴더 열기도 기록합니다.
 
+로그인 지연은 `startup.environment-ready`, `startup.browser-ready`, `auth.session-cleared`의 `elapsedMs`로 앱 내부 준비 시간을 나눕니다. `auth.window-shown` 뒤 `auth.page-ready`까지는 로그인창의 준비 구간이며 후자에 소요 시간을 기록합니다. 사이트 탐색 시간은 같은 `NavigationId`의 시작·완료 시간차입니다. 계정 입력과 경고창 확인 시간은 사이트 지연에 합산하지 마세요. `auth.auto-failed`의 `not-submitted`는 사이트 함수가 로그인 요청을 제출하지 않아 즉시 수동 전환한 경우입니다.
+
 자동로그인은 `auth.auto-start/success/failed/skipped`, 저장·해제는 `auth.remember-saved/disabled`, 파일 오류는 `auth.storage-failed`, 로그아웃은 `auth.logout-start/complete`로 확인합니다. `browser.navigation-end`의 HTTP 상태와 WebErrorStatus로 인증 거부와 연결 오류를 구분합니다. 상세 원인 코드는 [Wiki](../docs/wiki/Troubleshooting.md)에 있습니다. 인증 파일 `autologin.dat`는 문의 자료에 포함하지 마세요.
 휠 입력은 묶어서 기록하여 과도한 로그를 줄입니다. 로그 경로가 기록된 폴더에서 전체 파일을 받으면 회전 직전의 동작도 분석할 수 있습니다.
 

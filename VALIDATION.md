@@ -1,4 +1,17 @@
-# Release validation: 1.2.0
+# Release validation: 1.2.1
+
+Validated on Windows on 2026-10-23.
+
+- Release build: zero warnings/errors. Actual WPF/WebView2 fixture suite: **200 checks passed**, including **67 authentication checks**; 203 intercepted requests and 10 synthetic report POSTs. Without private HTML input, 198 checks run.
+- Regression fixture now uses native `form.submit()`, masks the password, returns an intermediate RSA HTML page, and redirects to the authenticated home page after 150ms. Manual opt-in retains the original password until verified identity; automatic login follows the redirect. Actual rejected forms still discard the pending credential.
+- Login shell appears before cleanup and page loading; closing it during loading cancels safely and the next login succeeds. Logout plus prompt clears site data exactly once. Download cache remains enabled. Already-verified authentication reads the current page instead of reloading the home page.
+- Calendar login/cache logic was inspected read-only. Reused final authenticated-page verification, submit detection, browser/cache reuse, and credential readback. Its local identity-only startup cannot supply this app's current website organization menu; no calendar DB, credential file or browser profile dependency was introduced.
+- No-submit failures return in under 5 seconds in local QA, with no authentication POST. A submitted-but-stalled flow still enforces the actual 20-second total deadline. No raw credential, encrypted password field or cookie appears in diagnostic logs.
+- Sanitized user-log analysis: site navigation about 0.02–1.62s; duplicate app cleanup about 7.3s during logout; false credential-capture warning acknowledged after about 9–26s. Browser initialization could consume up to about 5.44s, but v1.2.0 cannot split that stage further. New environment/core/cleanup/window/page-ready diagnostics separate future reports. Raw user logs and staff information are not committed.
+- Scope: synthetic website responses in actual WebView2, not live employee authentication. Website/network latency and cold browser startup still depend on the user's environment; local fixture timings are not a production performance promise.
+- One-command publish/installer generation completed. Actual isolated upgrade from 1.2.0 to 1.2.1 passed payload/icon/shortcut/uninstall registration checks; the installed executable passed the same 200 checks (203 intercepted requests, 10 report POSTs). Uninstall removed its app/registration/shortcut and preserved pre-existing settings and credentials. The calendar repository remained unchanged.
+
+## Previous release: 1.2.0
 
 Validated on Windows on 2026-10-23. Work order: design specification → implementation → QA → Wiki.
 

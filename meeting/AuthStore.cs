@@ -37,6 +37,8 @@ internal sealed class AuthStore(string path)
         try {
             byte[] encrypted=ProtectedData.Protect(clear,Entropy,DataProtectionScope.CurrentUser);
             File.WriteAllBytes(path+".tmp",encrypted);File.Move(path+".tmp",path,true);
+            var saved=Read();
+            if(saved?.Id!=credential.Id||saved.Password!=credential.Password)throw new InvalidDataException("Credential verification failed");
         } finally { CryptographicOperations.ZeroMemory(clear); }
     }
     internal void Delete() { File.Delete(path);File.Delete(path+".tmp"); }

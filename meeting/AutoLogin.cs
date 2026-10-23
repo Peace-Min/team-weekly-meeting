@@ -16,6 +16,7 @@ internal sealed partial class MeetingWindow
     private bool _autoLoginAttempted, _captureLoginSecrets;
     private LoginCredential? _pendingCredential;
     private string _authNotice="";
+    private Task _siteCleanup=Task.CompletedTask;
     private readonly TextBlock _accountText=new(){VerticalAlignment=VerticalAlignment.Center,FontSize=12,Foreground=Brushes.DimGray,Margin=new Thickness(12,0,8,0)};
     private Button? _accountButton;
 
@@ -70,11 +71,30 @@ internal sealed partial class MeetingWindow
 
     private async Task ClearSessionAsync(CancellationToken cancellationToken=default)
     {
+        var timer=System.Diagnostics.Stopwatch.StartNew();
+        if(_siteCleanup.IsCompleted)_siteCleanup=Task.CompletedTask;
+        await _siteCleanup.WaitAsync(cancellationToken);
         var core=_login.CoreWebView2;
         core.Stop();await NavigateAsync(core,()=>core.Navigate("about:blank"),cancellationToken);
         core.CookieManager.DeleteAllCookies();
-        await core.Profile.ClearBrowsingDataAsync(CoreWebView2BrowsingDataKinds.AllProfile).WaitAsync(cancellationToken);
+        // Remove authenticated site data while retaining downloaded scripts, images and fonts.
+        _siteCleanup=core.Profile.ClearBrowsingDataAsync(CoreWebView2BrowsingDataKinds.AllSite);
+        await _siteCleanup.WaitAsync(cancellationToken);
         core.Profile.IsPasswordAutosaveEnabled=false;core.Profile.IsGeneralAutofillEnabled=false;
+        AppLog.Write("auth.session-cleared",new{elapsedMs=timer.ElapsedMilliseconds});
+    }
+
+    private async Task<string> WaitForAuthenticatedIdAsync(CancellationToken cancellationToken)
+    {
+        while(true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string actor=await AuthenticatedIdAsync(cancellationToken);
+            if(actor.Length>0)return actor;
+            if(await _login.CoreWebView2.ExecuteScriptAsync("!!document.querySelector('input[type=password]')").WaitAsync(cancellationToken)=="true")return "";
+            // loginRSA.jsp returns an intermediate HTML page before redirecting to the account page.
+            await Task.Delay(100,cancellationToken);
+        }
     }
 
     private async Task<bool> AuthenticateAsync(bool allowAutomatic=true)
@@ -105,6 +125,7 @@ internal sealed partial class MeetingWindow
         string failure="connection";bool authenticated=false;
         try
         {
+            await _siteCleanup.WaitAsync(deadline.Token);
             await NavigateAsync(core,()=>core.Navigate(Home),deadline.Token);
             string actor=await AuthenticatedIdAsync(deadline.Token);
             if(actor==saved.Id){_pendingLoginId=actor;authenticated=true;AppLog.Write("auth.auto-success",new{mode="session"});return true;}
@@ -114,12 +135,27 @@ internal sealed partial class MeetingWindow
             {failure="page-structure";return false;}
             _pendingLoginId=saved.Id;
             failure="rejected";
-            await NavigateAsync(core,()=>{
-                var submission=core.ExecuteScriptAsync("document.querySelector('input[name=id]').value="+JsonSerializer.Serialize(saved.Id)+";document.querySelector('input[type=password]').value="+JsonSerializer.Serialize(saved.Password)+";goLogin()");
-                // Observe failures without forwarding a credential-bearing operation to the global logger.
-                _=submission.ContinueWith(task=>{_ = task.Exception;},TaskContinuationOptions.OnlyOnFaulted);
-            },deadline.Token);
-            actor=await AuthenticatedIdAsync(deadline.Token);
+            using(var submitDeadline=CancellationTokenSource.CreateLinkedTokenSource(deadline.Token)){
+                bool notSubmitted=false;Task? submission=null;
+                async Task SubmitAsync(){
+                    string result=await core.ExecuteScriptAsync("""
+                        (()=>{
+                          const form=document.querySelector('input[type=password]').form, original=form.submit;
+                          let submitted=false;
+                          form.submit=function(...args){submitted=true;return original.apply(this,args)};
+                          try{
+                        """+"document.querySelector('input[name=id]').value="+JsonSerializer.Serialize(saved.Id)+";document.querySelector('input[type=password]').value="+JsonSerializer.Serialize(saved.Password)+";goLogin();"+"""
+                          }catch{ return 0; }finally{form.submit=original;}
+                          return submitted?1:0;
+                        })()
+                        """).WaitAsync(deadline.Token);
+                    if(result=="0"){notSubmitted=true;submitDeadline.Cancel();}
+                }
+                try{await NavigateAsync(core,()=>submission=SubmitAsync(),submitDeadline.Token);}
+                catch(OperationCanceledException)when(notSubmitted){failure=alertShown?"rejected":"not-submitted";return false;}
+                finally{if(submission!=null)await submission;}
+            }
+            actor=await WaitForAuthenticatedIdAsync(deadline.Token);
             if(actor!=saved.Id){failure=actor.Length>0?"account-mismatch":"rejected";return false;}
             authenticated=true;AppLog.Write("auth.auto-success",new{mode="credentials"});return true;
         }
@@ -136,6 +172,7 @@ internal sealed partial class MeetingWindow
                     "rejected"=>"자동로그인이 거부되었습니다. 비밀번호 변경 또는 계정 상태를 확인하고 직접 로그인해 주세요.",
                     "account-mismatch"=>"로그인 계정이 일치하지 않습니다. 직접 로그인해 주세요.",
                     "page-structure"=>"로그인 페이지 구성이 달라 자동로그인을 중단했습니다. 직접 로그인해 주세요.",
+                    "not-submitted"=>"사이트 로그인 함수가 인증 요청을 제출하지 못했습니다. 직접 다시 로그인해 주세요.",
                     "timeout"=>"자동로그인 응답이 20초를 넘어 중단했습니다. 직접 다시 로그인해 주세요.",
                     _=>"서버 응답 또는 사내망 연결을 확인하지 못했습니다. 직접 다시 로그인해 주세요."};
                 AppLog.Write("auth.auto-failed",new{reason=failure});
@@ -147,7 +184,7 @@ internal sealed partial class MeetingWindow
     private async Task AccountActionAsync()
     {
         if(_loginId.Length>0){await LogoutAsync();return;}
-        if(await AuthenticateAsync(false))await LoadDirectoryAsync();
+        if(await AuthenticateAsync(false))await RefreshDirectoryForAccountAsync();
     }
 
     private async Task LogoutAsync(bool showLogin=true)
@@ -163,6 +200,6 @@ internal sealed partial class MeetingWindow
         }
         _authNotice="로그아웃했습니다. 자동로그인 정보와 로그인 세션을 삭제했습니다.";
         _status.Text=_authNotice;AppLog.Write("auth.logout-complete");
-        if(showLogin && await AuthenticateAsync(false))await LoadDirectoryAsync();
+        if(showLogin && await SignInAsync(sessionCleared:true))await RefreshDirectoryForAccountAsync();
     }
 }

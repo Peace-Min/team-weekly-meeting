@@ -17,7 +17,7 @@ internal sealed partial class MeetingWindow
     private int _fixturePosts;
     private string _smokeLoginId = "alpha";
     private bool _smokeRemember;
-    private bool _smokeCancelLogin,_smokeDisableRemember,_smokeRejectFirst,_smokeBlockSave,_smokeSuppressCapture;
+    private bool _smokeCancelLogin,_smokeCancelLoading,_smokeDisableRemember,_smokeRejectFirst,_smokeBlockSave,_smokeSuppressCapture;
     private const string SmokePassword="qa-only-password-!42";
     private string _fixtureAuthMode="success";
     private int _fixtureAuthPosts;
@@ -42,7 +42,7 @@ internal sealed partial class MeetingWindow
                 else{
                     if(_fixtureAuthMode=="mismatch")id="beta";
                     responseHeaders+="\r\nSet-Cookie: meeting-auth="+id+"; Path=/; Secure; HttpOnly";
-                    body=FixtureOrgMenu+"<form><input type=hidden name=id value='"+id+"'><input type=hidden name=table_code value=report_tbl></form>";
+                    body="<p>인증 처리 중</p>"+(_fixtureAuthMode=="timeout"?"":"<script>setTimeout(()=>location.replace('pjm.jsp'),150)</script>");
                 }
             }
             else if (uri.AbsolutePath == "/favicon.ico") body = "";
@@ -52,10 +52,10 @@ internal sealed partial class MeetingWindow
                 body = """
                     <form name="form"><h1>테스트용 사내 로그인</h1><table width="180" align="center"><tr><td width="60"><div align="right">ID :&nbsp;&nbsp;</div></td><td width="120"><input name="id" size="15"></td></tr><tr><td width="60"><div align="right">Password :&nbsp;&nbsp;</div></td><td width="120"><input type="password" name="pass" size="15"></td></tr></table>
                     <button type="button" onclick="goLogin()">로그인</button></form>
-                    <script>function goLogin(){const f=document.forms.form;if(!f.id.value||!f.pass.value)return;f.pass.value='xxxxxxxxx';f.method='post';f.action='loginRSA.jsp';f.requestSubmit()}</script>
+                    <script>function goLogin(){const f=document.forms.form;if(!f.id.value||!f.pass.value)return;f.pass.value='xxxxxxxxx';f.method='post';f.action='loginRSA.jsp';f.submit()}</script>
                     """;
                 if(_fixtureAuthMode=="structure")body=body.Replace("function goLogin()","function changedLogin()");
-                if(_fixtureAuthMode=="timeout")body=body.Replace("f.requestSubmit()","void 0");
+                if(_fixtureAuthMode=="not-submitted")body=body.Replace("f.submit()","void 0");
             }
             else if (uri.AbsolutePath == "/pjm/pjm.jsp")
             {

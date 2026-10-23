@@ -1,5 +1,11 @@
 # 로그인 오류 대응
 
+## v1.2.0에서 로그인 성공 후 저장 정보가 삭제되거나 시작이 느림
+
+v1.2.1로 갱신하세요. RSA 중간 페이지를 실패로 오인해 저장 입력을 지웠고, 뒤이어 뜬 경고창 확인을 기다리던 문제를 수정했습니다. 로그아웃 후 중복 프로필 삭제도 제거했으며, 다운로드 캐시는 유지하고 로그인 창을 먼저 표시합니다. 이미 삭제된 인증정보는 복원할 수 없으므로 한 번 직접 로그인하며 ‘자동로그인’을 다시 체크하세요.
+
+`auth.auto-skipped`의 `reason=not-configured`는 자동로그인이 실행되지 않았다는 뜻입니다. 수동 로그인 성공과 자동로그인 저장 성공은 별도 사건이며, 저장 성공은 `auth.remember-saved`로 확인합니다.
+
 ## 자동로그인이 거부됨
 
 비밀번호 변경, 계정 잠금·사용 중지 등으로 인증되지 않은 경우입니다. 앱은 서버가 구분해 주지 않은 원인을 임의로 단정하지 않습니다. 올바른 정보로 수동 로그인하고, 계정 잠금 등은 사내 관리자에게 확인하세요. 실패한 입력으로 저장 정보를 덮어쓰지 않습니다.
@@ -25,8 +31,14 @@
 - `auth.auto-start`, `auth.auto-success`: 시작, 세션 재사용 또는 저장 정보로 성공.
 - `auth.auto-skipped`: 저장 없음 또는 실행당 시도 한도.
 - `auth.auto-failed`: `storage`, `rejected`, `account-mismatch`, `page-structure`, `timeout`, `connection-or-timeout`, `browser`.
+- `auth.auto-failed`의 `not-submitted`: 원본 로그인 함수가 요청을 제출하지 않아 대기를 생략하고 수동 전환.
 - `auth.remember-saved`, `auth.remember-disabled`, `auth.storage-failed`: 저장·해제·파일 오류.
 - `auth.logout-start`, `auth.logout-complete`: 로그아웃 시작과 정리 완료.
 - `browser.navigation-end`: HTTP 상태, 성공 여부, WebErrorStatus. URL 쿼리와 POST 본문은 기록하지 않습니다.
+- `startup.environment-ready`, `startup.browser-ready`: 브라우저 환경 생성과 초기화 소요 `elapsedMs`.
+- `auth.session-cleared`: 쿠키·사이트 저장소 정리 소요 `elapsedMs`. 로그아웃부터 새 로그인 페이지까지 한 번만 발생해야 합니다.
+- `auth.window-shown`, `auth.page-ready`: 로그인 창 표시와 페이지 준비 완료. 후자의 `elapsedMs`에는 해당 창에서 필요한 세션 정리·페이지 로딩이 포함됩니다.
+
+사이트 탐색은 같은 `NavigationId`의 `browser.navigation-start/end` 시간차로 확인합니다. 로그인 완료까지 전체 시간에는 사용자가 입력하거나 경고를 확인하는 시간도 들어가므로 사이트 응답 시간으로 해석하지 마세요. v1.2.0의 브라우저 초기화 지연은 단계 로그가 없어 환경 생성과 WebView 초기화로 더 세분할 수 없습니다.
 
 로그인이 성공해도 저장할 입력을 확인하지 못하면 기존 자동로그인 정보를 삭제하고 다음 실행은 수동으로 전환합니다. 저장 실패 후 삭제까지 불가능하면 이전 저장 계정으로 다음 실행 시 자동로그인될 수 있음을 경고합니다. 파일 잠금/권한을 해결한 뒤 자동로그인을 다시 설정하세요. `auth.remember-unavailable`은 저장 입력 확인 실패를 뜻합니다.

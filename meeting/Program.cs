@@ -163,14 +163,17 @@ internal sealed partial class MeetingWindow : Window
     {
         Directory.CreateDirectory(_dataDir);
         LoadMeetingSettings();
+        var timer=System.Diagnostics.Stopwatch.StartNew();
         _environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(_dataDir, "WebView2"));
+        AppLog.Write("startup.environment-ready",new{elapsedMs=timer.ElapsedMilliseconds});timer.Restart();
         await InitializeWebAsync(_login);
+        AppLog.Write("startup.browser-ready",new{elapsedMs=timer.ElapsedMilliseconds});
         if (_smoke)
         {
             await NavigateAsync(_login.CoreWebView2, () => _login.CoreWebView2.Navigate(Home));
             await SmokeTestAsync();
         }
-        else if (await AuthenticateAsync()) await LoadDirectoryAsync();
+        else if (await AuthenticateAsync()) await RefreshDirectoryForAccountAsync();
         else { _closing = true; Close(); }
     }
 

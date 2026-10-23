@@ -31,8 +31,18 @@ internal sealed partial class MeetingWindow
             await NavigateAsync(core,()=>core.Navigate("https://www.netcus.com/pjm/login.htm"));
             Verify(await core.ExecuteScriptAsync("localStorage.getItem('qa-session')===null")=="true","로그아웃 시 사이트 로컬 저장소 삭제");
             Verify(!core.Profile.IsPasswordAutosaveEnabled&&!core.Profile.IsGeneralAutofillEnabled,"WebView2 자체 비밀번호 저장과 자동 완성 비활성화");
+            _smokeCancelLoading=true;
+            Verify(!await SignInAsync()&&!_auth.Exists,"로그인 페이지 준비 중 창을 닫아도 취소 처리하고 저장하지 않음");
+            _smokeCancelLoading=false;
             _smokeRemember=true;
+            bool capturedAtRedirect=false;
+            void ObserveRedirect(object? sender,Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e){
+                if(core.Source.Contains("/pjm/loginRSA.jsp")&&e.IsSuccess)capturedAtRedirect=_pendingCredential?.Password==SmokePassword;
+            }
+            core.NavigationCompleted+=ObserveRedirect;
             Verify(await SignInAsync(),"체크박스 선택 후 수동 로그인 성공");await LoadDirectoryAsync();
+            core.NavigationCompleted-=ObserveRedirect;
+            Verify(capturedAtRedirect,"RSA 중간 페이지에서도 마스킹 전 입력 유지, 리다이렉트 후 인증");
             Verify(_auth.Read()?.Password==SmokePassword&&_auth.Read()?.Id=="alpha","RSA 마스킹 전 원래 비밀번호를 인증 성공 후 저장");
             string encrypted=Encoding.UTF8.GetString(File.ReadAllBytes(_auth.PathName));
             Verify(!encrypted.Contains(SmokePassword)&&!encrypted.Contains("alpha"),"파일에 계정과 비밀번호 평문 없음");
@@ -43,9 +53,11 @@ internal sealed partial class MeetingWindow
             Verify(await TryAutoLoginAsync()&&_fixtureAuthPosts==posts+1&&_pendingLoginId=="alpha","세션 만료 후 저장 정보로 자동 인증 1회 성공");
             await RefreshDirectoryForAccountAsync();
             Verify(_loginId=="alpha"&&_directory.Members.Length==5&&_accountButton?.Content?.ToString()=="로그아웃","자동 인증 후 페이지 조직도 및 계정 UI 갱신");
-            foreach(string mode in new[]{"rejected","locked","disabled","alert","server","network","structure","mismatch"}){
+            foreach(string mode in new[]{"rejected","locked","disabled","alert","server","network","structure","mismatch","not-submitted"}){
                 await ResetAttempt(mode);byte[] before=File.ReadAllBytes(_auth.PathName);posts=_fixtureAuthPosts;
+                var attemptTimer=System.Diagnostics.Stopwatch.StartNew();
                 Verify(!await TryAutoLoginAsync(),mode+": 자동 인증 실패를 성공으로 처리하지 않음");
+                if(mode=="not-submitted")Verify(attemptTimer.Elapsed.TotalSeconds<5&&_fixtureAuthPosts==posts&&_authNotice.Contains("제출"),"로그인 함수가 제출하지 않으면 20초 대기 없이 수동 전환");
                 Verify(_pendingLoginId==""&&_authNotice.Length>0&&File.ReadAllBytes(_auth.PathName).SequenceEqual(before),mode+": 안내 제공·저장 정보 유지·미인증 계정 제거");
                 int after=_fixtureAuthPosts;
                 Verify(!await TryAutoLoginAsync()&&_fixtureAuthPosts==after&&after-posts<=1,mode+": 자동 반복 없음");
@@ -106,11 +118,19 @@ internal sealed partial class MeetingWindow
             }
             await LogoutAsync(false);_autoLoginAttempted=false;posts=_fixtureAuthPosts;
             Verify(!await TryAutoLoginAsync()&&!_auth.Exists&&_fixtureAuthPosts==posts,"로그아웃 후 재실행 조건에서도 자동 인증 없음");
+            _smokeCancelLogin=true;
+            await LogoutAsync();
+            _smokeCancelLogin=false;
             string logs=string.Join("\n",Directory.GetFiles(AppLog.DirectoryPath,"meeting.log*").Select(File.ReadAllText));
+            string logoutLog=logs[logs.LastIndexOf("auth.logout-start",StringComparison.Ordinal)..];
+            Verify(logoutLog.Split("auth.session-cleared").Length==2,"로그아웃 후 재로그인 창에서 세션 삭제는 정확히 한 번");
+            int shown=logs.IndexOf("auth.window-shown",logs.IndexOf("auth.cancel",StringComparison.Ordinal),StringComparison.Ordinal);
+            Verify(shown>=0&&logs.IndexOf("auth.session-cleared",shown,StringComparison.Ordinal)<logs.IndexOf("auth.page-ready",shown,StringComparison.Ordinal),"로그인 창을 세션 삭제·페이지 로딩보다 먼저 표시");
+            Verify(logs.Split("auth.remember-unavailable").Length==2,"입력 수집을 강제 차단한 한 경우 외에는 저장 정보 삭제 경고 없음");
             Verify(!logs.Contains(SmokePassword)&&!logs.Contains("Password_Enc")&&!logs.Contains("meeting-auth="),"진단 로그에 비밀번호·RSA 필드·쿠키 없음");
             Verify(logs.Contains("auth.auto-success")&&logs.Contains("auth.auto-failed")&&logs.Contains("auth.logout-complete"),"비밀 없이 인증 성공·실패·로그아웃 진단 기록");
         }finally{
-            _smokeRemember=false;_smokeCancelLogin=false;_smokeDisableRemember=false;_smokeRejectFirst=false;_smokeBlockSave=false;_smokeSuppressCapture=false;_fixtureAuthMode="success";
+            _smokeRemember=false;_smokeCancelLogin=false;_smokeCancelLoading=false;_smokeDisableRemember=false;_smokeRejectFirst=false;_smokeBlockSave=false;_smokeSuppressCapture=false;_fixtureAuthMode="success";
             File.WriteAllLines(Path.Combine(Path.GetTempPath(),"TeamWeeklyMeeting-auth-qa.txt"),results);
         }
     }

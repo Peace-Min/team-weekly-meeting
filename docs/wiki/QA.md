@@ -1,11 +1,13 @@
-# v1.2.0 QA
+# v1.2.1 QA
 
 검증일: 2026-10-23, Windows x64 / 실제 WPF·WebView2.
 
 - Release 빌드: 경고 0, 오류 0.
-- 전체 191개 검사 통과, 인증 관련 58개 포함.
-- 로컬 응답 173건, 모의 보고서 POST 10회. 원본 페이지 HTML은 비공개 로컬 입력으로만 검증하며 Git에 포함하지 않았습니다.
+- 전체 200개 검사 통과, 인증 관련 67개 포함.
+- 로컬 응답 203건, 모의 보고서 POST 10회. 원본 페이지 HTML은 비공개 로컬 입력으로만 검증하며 Git에 포함하지 않았습니다.
 - 펜·형광펜·발표 이동·원본 본문·아이콘 등의 기존 검사를 함께 수행합니다.
+
+RSA 로그인은 원본과 같은 `form.submit()` 후 중간 HTML 페이지에서 150ms 뒤 홈으로 이동하도록 재현했습니다. 로그인창 선표시, 로딩 중 취소 후 재로그인, 로그아웃 시 정리 1회, 미제출 즉시 실패 및 제출 후 실제 20초 제한을 검증했습니다.
 
 ## 범위와 한계
 
@@ -18,12 +20,14 @@
 ```powershell
 dotnet build meeting/TeamWeeklyMeeting.csproj -c Release
 pwsh -File tools/test-release.ps1 -ExePath meeting/bin/Release/net9.0-windows/TeamWeeklyMeeting.exe
-# 비공개 HTML 입력을 주지 않으면 기존 페이지 검사 2개를 제외한 189개가 실행됩니다.
+# 비공개 HTML 입력을 주지 않으면 기존 페이지 검사 2개를 제외한 198개가 실행됩니다.
 ```
 
 합성 로그인 계정과 비밀번호만 사용합니다. 결과는 `%TEMP%\TeamWeeklyMeeting-smoke-result.txt`, 인증별 결과는 `%TEMP%\TeamWeeklyMeeting-auth-qa.txt`에 저장됩니다. 테스트 전용 프로필이므로 실제 사용자의 인증정보는 읽지 않습니다.
 
 설치파일 생성 후 `pwsh -File tools/test-installer.ps1`로 실제 설치·기능·바로가기·제거·기존 사용자 설정 보존을 검증합니다. 이미 등록된 설치본이나 시작 메뉴 바로가기가 있으면 덮어쓰지 않고 중단합니다.
+
+v1.2.1 설치본 검증 완료: `build-installer.cmd`로 생성한 설치파일로 v1.2.0 → v1.2.1 실제 격리 업그레이드, 설치 EXE·아이콘 해시, 바로가기·제거 등록을 확인했습니다. 설치된 앱에서도 200개 검사(로컬 응답 203건, 보고서 POST 10회)가 통과했고 제거 후 기존 설정·인증정보가 보존됐습니다. 캘린더 저장소는 수정하지 않았습니다.
 
 ## 인증별 결과
 
@@ -33,7 +37,9 @@ pwsh -File tools/test-release.ps1 -ExePath meeting/bin/Release/net9.0-windows/Te
 - PASS: 로그아웃 시 저장 정보와 앱 쿠키 삭제
 - PASS: 로그아웃 시 사이트 로컬 저장소 삭제
 - PASS: WebView2 자체 비밀번호 저장과 자동 완성 비활성화
+- PASS: 로그인 페이지 준비 중 창을 닫아도 취소 처리하고 저장하지 않음
 - PASS: 체크박스 선택 후 수동 로그인 성공
+- PASS: RSA 중간 페이지에서도 마스킹 전 입력 유지, 리다이렉트 후 인증
 - PASS: RSA 마스킹 전 원래 비밀번호를 인증 성공 후 저장
 - PASS: 파일에 계정과 비밀번호 평문 없음
 - PASS: 유효한 본인 세션은 비밀번호 제출 없이 재사용
@@ -64,6 +70,10 @@ pwsh -File tools/test-release.ps1 -ExePath meeting/bin/Release/net9.0-windows/Te
 - PASS: mismatch: 자동 인증 실패를 성공으로 처리하지 않음
 - PASS: mismatch: 안내 제공·저장 정보 유지·미인증 계정 제거
 - PASS: mismatch: 자동 반복 없음
+- PASS: not-submitted: 자동 인증 실패를 성공으로 처리하지 않음
+- PASS: 로그인 함수가 제출하지 않으면 20초 대기 없이 수동 전환
+- PASS: not-submitted: 안내 제공·저장 정보 유지·미인증 계정 제거
+- PASS: not-submitted: 자동 반복 없음
 - PASS: 실제 WebView2 탐색 차단 오류를 인증 거부와 구분하여 수동 전환
 - PASS: 20초 전체 제한 후 자동 시도 중단
 - PASS: 손상된 암호화 파일은 수동 로그인으로 전환
@@ -83,5 +93,8 @@ pwsh -File tools/test-release.ps1 -ExePath meeting/bin/Release/net9.0-windows/Te
 - PASS: 인증은 성공했지만 저장 입력을 확인하지 못한 경우 기존 자동로그인 정보 제거
 - PASS: 인증정보 삭제 실패도 세션·화면은 정리하고 자동로그인 잔존 경고
 - PASS: 로그아웃 후 재실행 조건에서도 자동 인증 없음
+- PASS: 로그아웃 후 재로그인 창에서 세션 삭제는 정확히 한 번
+- PASS: 로그인 창을 세션 삭제·페이지 로딩보다 먼저 표시
+- PASS: 입력 수집을 강제 차단한 한 경우 외에는 저장 정보 삭제 경고 없음
 - PASS: 진단 로그에 비밀번호·RSA 필드·쿠키 없음
 - PASS: 비밀 없이 인증 성공·실패·로그아웃 진단 기록

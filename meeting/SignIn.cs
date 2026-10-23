@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,9 +25,9 @@ internal sealed partial class MeetingWindow
         })()
         """;
 
-    private async Task<bool> SignInAsync()
+    private Task<bool> SignInAsync(bool sessionCleared=false)
     {
-        AppLog.Write("auth.prompt");ResetAccountView();await ClearSessionAsync();
+        AppLog.Write("auth.prompt");ResetAccountView();
         var core=_login.CoreWebView2;
         _pages.Children.Remove(_login);_login.Visibility=Visibility.Visible;
         var layout=new DockPanel();
@@ -39,6 +40,8 @@ internal sealed partial class MeetingWindow
         var retry=new Button{Content="로그인 페이지 다시 연결",HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(22,8,22,0),Visibility=Visibility.Collapsed};
         DockPanel.SetDock(retry,Dock.Top);layout.Children.Add(retry);layout.Children.Add(_login);
         var dialog=new Window{Owner=this,Icon=Icon,Title="사내 계정 로그인",Width=860,Height=740,MinWidth=600,MinHeight=500,Content=layout,WindowStartupLocation=WindowStartupLocation.CenterOwner,FontFamily=FontFamily,FontSize=13,Background=System.Windows.Media.Brushes.White};
+        using var lifetime=new CancellationTokenSource();
+        dialog.Closed+=(_,_)=>lifetime.Cancel();
         bool accepted=false,checking=false,smokeDriven=false;
         _captureLoginSecrets=remember.IsChecked==true;
         async Task ApplyPageAsync()
@@ -48,9 +51,20 @@ internal sealed partial class MeetingWindow
         }
         async Task OpenPageAsync()
         {
-            retry.IsEnabled=false;
-            try{await NavigateAsync(core,()=>core.Navigate("https://www.netcus.com/pjm/login.htm"));await ApplyPageAsync();retry.Visibility=Visibility.Collapsed;}
-            catch(Exception ex)when(!_closing){notice.Text="로그인 페이지에 연결하지 못했습니다. 사내망 연결을 확인한 뒤 다시 연결하세요.";retry.Visibility=Visibility.Visible;AppLog.Write("auth.manual-connect-failed",new{type=ex.GetType().Name});}
+            retry.IsEnabled=false;remember.IsEnabled=false;
+            var timer=System.Diagnostics.Stopwatch.StartNew();
+            string previousNotice=notice.Text;
+            notice.Text=previousNotice.Length>0?previousNotice+"\n로그인 페이지를 불러오는 중…":"로그인 페이지를 불러오는 중…";
+            try{
+                if(!sessionCleared){await ClearSessionAsync(lifetime.Token);sessionCleared=true;}
+                await NavigateAsync(core,()=>core.Navigate("https://www.netcus.com/pjm/login.htm"),lifetime.Token);
+                if(!dialog.IsVisible)return;
+                await ApplyPageAsync();retry.Visibility=Visibility.Collapsed;notice.Text=previousNotice;remember.IsEnabled=true;
+                AppLog.Write("auth.page-ready",new{elapsedMs=timer.ElapsedMilliseconds});
+            }
+            catch(OperationCanceledException)when(lifetime.IsCancellationRequested){}
+            catch(Exception)when(_closing||!dialog.IsVisible){}
+            catch(Exception ex)when(!_closing&&dialog.IsVisible){notice.Text="로그인 페이지에 연결하지 못했습니다. 사내망 연결을 확인한 뒤 다시 연결하세요.";retry.Visibility=Visibility.Visible;AppLog.Write("auth.manual-connect-failed",new{type=ex.GetType().Name});}
             finally{retry.IsEnabled=true;}
         }
         retry.Click+=async(_,_)=>await OpenPageAsync();
@@ -66,7 +80,11 @@ internal sealed partial class MeetingWindow
             if(checking||accepted||_closing||!dialog.IsVisible)return;
             checking=true;
             try{
-                string actor=await AuthenticatedIdAsync();if(actor.Length==0){_pendingCredential=null;return;}
+                string actor=await AuthenticatedIdAsync();if(actor.Length==0){
+                    // An intermediate RSA redirect is not a rejected login form.
+                    if(await core.ExecuteScriptAsync("!!document.querySelector('input[type=password]')")=="true")_pendingCredential=null;
+                    return;
+                }
                 if(_pendingLoginId.Length>0&&actor!=_pendingLoginId){notice.Text="입력한 계정과 인증된 계정이 다릅니다. 다시 로그인해 주세요.";return;}
                 _pendingLoginId=actor;
                 try{
@@ -87,12 +105,16 @@ internal sealed partial class MeetingWindow
             finally{checking=false;}
         }
         async void Completed(object? sender,CoreWebView2NavigationCompletedEventArgs e)
-        {try{if(e.IsSuccess){await ApplyPageAsync();await CheckAsync();}else{notice.Text="서버 연결을 확인하지 못했습니다. 다시 연결해 주세요.";retry.Visibility=Visibility.Visible;}}catch(Exception)when(_closing||!dialog.IsVisible){}}
+        {try{if(e.IsSuccess&&e.HttpStatusCode<400){await ApplyPageAsync();await CheckAsync();}else{_pendingCredential=null;notice.Text="서버 연결을 확인하지 못했습니다. 다시 연결해 주세요.";retry.Visibility=Visibility.Visible;}}catch(Exception)when(_closing||!dialog.IsVisible){}}
         core.NavigationCompleted+=Completed;
         try{
-            await OpenPageAsync();
             using var blockedStore=_smokeBlockSave?new FileStream(_auth.PathName,FileMode.Open,FileAccess.Read,FileShare.None):null;
             dialog.ContentRendered+=async(_,_)=>{
+                if(smokeDriven)return;
+                AppLog.Write("auth.window-shown");
+                if(_smokeCancelLoading){var loading=OpenPageAsync();dialog.Close();await loading;return;}
+                await OpenPageAsync();
+                if(!dialog.IsVisible||lifetime.IsCancellationRequested)return;
                 await CheckAsync();if(!_smoke||accepted||!dialog.IsVisible||smokeDriven)return;
                 smokeDriven=true;
                 if(_smokeDisableRemember){remember.IsChecked=false;await Task.Delay(100);}
@@ -112,7 +134,7 @@ internal sealed partial class MeetingWindow
                 }
                 await core.ExecuteScriptAsync(submit);
             };
-            dialog.ShowDialog();if(!accepted)AppLog.Write("auth.cancel");return accepted;
+            dialog.ShowDialog();if(!accepted)AppLog.Write("auth.cancel");return Task.FromResult(accepted);
         }finally{
             _captureLoginSecrets=false;_pendingCredential=null;core.NavigationCompleted-=Completed;
             core.Stop();layout.Children.Remove(_login);dialog.Content=null;_login.Visibility=Visibility.Hidden;_pages.Children.Add(_login);

@@ -8,7 +8,7 @@
     <AssemblyName>TeamWeeklyMeeting</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/company.ico</ApplicationIcon>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <SelfContained>false</SelfContained>
     <RuntimeFrameworkVersion>9.0.17</RuntimeFrameworkVersion>
     <TargetLatestRuntimePatch>false</TargetLatestRuntimePatch>
