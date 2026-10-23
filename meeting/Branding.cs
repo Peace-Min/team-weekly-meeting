@@ -33,7 +33,7 @@ internal sealed partial class MeetingWindow
             VerticalAlignment = VerticalAlignment.Center, ToolTip = "phmin@netcus.com · 랜메신저 민평화" };
         contact.Click += (_, _) => ShowSupport();
         DockPanel.SetDock(contact, Dock.Right); header.Children.Add(contact);
-        var history=new Button{Content="v"+AppVersion+" · 업데이트 내역",Style=(Style)FindResource("HeaderButton"),
+        var history=new Button{Content="버전 정보",Style=(Style)FindResource("HeaderButton"),
             VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,10,0)};
         history.Click+=(_,_)=>ShowVersionHistory();DockPanel.SetDock(history,Dock.Right);header.Children.Add(history);
         var mark = new Image { Source = logo,

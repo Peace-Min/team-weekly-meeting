@@ -1,4 +1,13 @@
-# Release validation: 1.1.0
+# Release validation: 1.1.1
+
+Validated on Windows on 2026-10-23.
+
+- Release build: zero warnings and errors; **133 checks passed** with the private HTML fixture (131 without it), 84 intercepted requests and 10 report POSTs.
+- Version information: exact header button label, current release expanded, previous releases collapsed and expandable; compact dialog visually inspected.
+- Login: original 180px/60px/120px table structure reproduced; password label stays on one line, input width remains 140px. Form handlers and authentication are preserved.
+- Report title: fixture includes the original fixed-width image structure; the title image fills the report viewport while original report HTML and styles remain preserved.
+
+## Previous release: 1.1.0
 
 Validated on Windows on 2026-10-23.
 

@@ -9,6 +9,20 @@ namespace TeamWeeklyMeeting;
 
 internal sealed partial class MeetingWindow
 {
+    private const string LoginLayout = """
+        (()=>{
+          const password=document.querySelector('input[type=password]');
+          const table=password?.closest('table');if(!table)return;
+          table.style.width='240px';
+          for(const input of table.querySelectorAll('input:not([type=hidden])')){
+            const cell=input.closest('td'),label=cell?.previousElementSibling;
+            if(label){label.style.whiteSpace='nowrap';label.style.width='90px'}
+            if(cell)cell.style.width='150px';
+            input.style.width='140px';input.style.boxSizing='border-box';
+          }
+        })()
+        """;
+
     private async Task<bool> SignInAsync()
     {
         AppLog.Write("auth.prompt");
@@ -55,17 +69,20 @@ internal sealed partial class MeetingWindow
         }
         async void Completed(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
-            if (e.IsSuccess) await CheckAsync();
+            if (e.IsSuccess) { await core.ExecuteScriptAsync(LoginLayout); await CheckAsync(); }
         }
         try
         {
             // No other account's saved session is used to choose the roster identity.
             await NavigateAsync(core, () => core.Navigate("https://www.netcus.com/pjm/login.htm"));
+            await core.ExecuteScriptAsync(LoginLayout);
             core.NavigationCompleted += Completed;
             dialog.ContentRendered += async (_, _) =>
             {
                 await CheckAsync();
                 if (!_smoke || accepted) return;
+                Require(await core.ExecuteScriptAsync("(()=>{const p=document.querySelector('input[type=password]'),l=p.closest('td').previousElementSibling;return getComputedStyle(l).whiteSpace==='nowrap'&&l.scrollWidth<=l.clientWidth&&p.getBoundingClientRect().width===140})()") == "true","로그인 비밀번호 라벨 한 줄 표시 및 입력 폭 확보");
+                using(var preview=System.IO.File.Create(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"TeamWeeklyMeeting-login-preview.png")))await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,preview);
                 await core.ExecuteScriptAsync("document.querySelector('input[name=id]').value=" + JsonSerializer.Serialize(_smokeLoginId)
                     + ";document.querySelector('input[name=id]').dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('button').click()");
             };

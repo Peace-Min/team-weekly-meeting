@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace TeamWeeklyMeeting;
 
@@ -35,22 +34,44 @@ internal sealed partial class MeetingWindow
 
     private Window CreateVersionWindow()
     {
-        var window=new Window{Owner=this,Icon=Icon,Title="버전 및 업데이트 내역",Width=650,Height=640,
-            MinWidth=480,MinHeight=400,WindowStartupLocation=WindowStartupLocation.CenterOwner,
-            FontFamily=FontFamily,FontSize=14,Background=Brushes.White,Foreground=(Brush)FindResource("Ink")};
-        var layout=new DockPanel{Margin=new Thickness(26),Background=Brushes.White};
-        var close=new Button{Content="닫기",HorizontalAlignment=HorizontalAlignment.Right,MinWidth=80,Margin=new Thickness(0,16,0,0)};
-        close.Click+=(_,_)=>window.Close();DockPanel.SetDock(close,Dock.Bottom);layout.Children.Add(close);
-        var title=new TextBlock{Text="팀 주간보고  v"+AppVersion,FontSize=22,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,0,0,22)};
-        DockPanel.SetDock(title,Dock.Top);layout.Children.Add(title);
+        var muted=new SolidColorBrush(Color.FromRgb(110,116,125));
+        var window=new Window{Owner=this,Icon=Icon,Title="버전 정보",Width=560,Height=420,
+            MinWidth=480,MinHeight=380,WindowStartupLocation=WindowStartupLocation.CenterOwner,
+            FontFamily=FontFamily,FontSize=13,Background=Brushes.White,Foreground=(Brush)FindResource("Ink")};
+        var layout=new DockPanel{Margin=new Thickness(24),Background=Brushes.White};
+        var footer=new DockPanel{Margin=new Thickness(0,16,0,0)};
+        var close=new Button{Content="닫기",MinWidth=72,IsCancel=true};
+        close.Click+=(_,_)=>window.Close();DockPanel.SetDock(close,Dock.Right);footer.Children.Add(close);
+        footer.Children.Add(new TextBlock{Text="설치된 버전의 변경 내역",Foreground=muted,FontSize=11,VerticalAlignment=VerticalAlignment.Center});
+        DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);
+        var header=new DockPanel{Margin=new Thickness(0,0,0,20)};
+        var icon=new Image{Source=(ImageSource)Icon,Width=40,Height=40,Margin=new Thickness(0,0,12,0)};
+        DockPanel.SetDock(icon,Dock.Left);header.Children.Add(icon);
+        var identity=new StackPanel();
+        identity.Children.Add(new TextBlock{Text="팀 주간보고",FontSize=18,FontWeight=FontWeights.SemiBold});
+        identity.Children.Add(new TextBlock{Text="현재 버전  v"+AppVersion,Foreground=muted,FontSize=12,Margin=new Thickness(0,3,0,0)});
+        header.Children.Add(identity);DockPanel.SetDock(header,Dock.Top);layout.Children.Add(header);
         var body=new StackPanel();
-        foreach(var entry in ReadReleaseHistory())
+        var entries=ReadReleaseHistory();
+        for(int i=0;i<entries.Length;i++)
         {
-            body.Children.Add(new TextBlock{Text=entry.Heading,FontSize=16,FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,0,0,10)});
-            foreach(string note in entry.Notes)body.Children.Add(new TextBlock{Text="• "+note,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,8)});
-            body.Children.Add(new Border{Height=1,Background=(Brush)FindResource("Line"),Margin=new Thickness(0,12,0,20)});
+            var entry=entries[i];var parts=entry.Heading.Split('·',2);
+            var heading=new DockPanel{LastChildFill=false};
+            heading.Children.Add(new TextBlock{Text="v"+parts[0].Trim(),FontSize=14,FontWeight=FontWeights.SemiBold,MinWidth=76});
+            heading.Children.Add(new TextBlock{Text=parts.Length>1?parts[1].Trim():"",Foreground=muted,FontSize=11,VerticalAlignment=VerticalAlignment.Center});
+            if(i==0)heading.Children.Add(new Border{Background=(Brush)FindResource("BrandSoft"),CornerRadius=new CornerRadius(3),Padding=new Thickness(6,2,6,2),Margin=new Thickness(10,0,0,0),Child=new TextBlock{Text="현재",FontSize=10,Foreground=new SolidColorBrush(Color.FromRgb(159,73,0))}});
+            var notes=new StackPanel{Margin=new Thickness(0,10,0,10)};
+            foreach(string note in entry.Notes)
+            {
+                var row=new DockPanel{Margin=new Thickness(0,0,0,7)};
+                var dot=new TextBlock{Text="•",Foreground=(Brush)FindResource("BrandOrange"),Width=14};DockPanel.SetDock(dot,Dock.Left);row.Children.Add(dot);
+                row.Children.Add(new TextBlock{Text=note,TextWrapping=TextWrapping.Wrap,LineHeight=20});notes.Children.Add(row);
+            }
+            var section=new Expander{Header=heading,Content=notes,IsExpanded=i==0,HorizontalContentAlignment=HorizontalAlignment.Stretch,Padding=new Thickness(0,9,0,5)};
+            body.Children.Add(section);
+            body.Children.Add(new Border{Height=1,Background=(Brush)FindResource("Line")});
         }
-        layout.Children.Add(new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Background=Brushes.White});
+        layout.Children.Add(new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});
         window.Content=layout;return window;
     }
 

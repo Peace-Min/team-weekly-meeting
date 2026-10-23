@@ -30,6 +30,7 @@ internal static class ReportViewport
             +'body > :not(#meeting-report-viewport){display:none!important}'
             +'#meeting-report-viewport{display:block;margin:0;padding:0;width:100%;box-sizing:border-box}'
             +'#meeting-report-viewport > table{margin:0!important}'
+            +'#meeting-report-viewport td[height="35"] > img[width="600"]{display:block;width:100%!important;height:35px!important}'
             +'#meeting-report-viewport > table,#meeting-report-viewport table[width="600"],'
             +'#meeting-report-viewport table[width="560"]{width:100%!important;max-width:100%!important}'
             +'#meeting-report-viewport td[width="600"],#meeting-report-viewport td[width="560"]{width:auto!important}';

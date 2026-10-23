@@ -30,7 +30,7 @@ internal sealed partial class MeetingWindow
                 || !e.Request.Headers.GetHeader("Cookie").Contains("meeting-auth=1"))
             {
                 body = """
-                    <form name="form"><h1>테스트용 사내 로그인</h1><input name="id"><input type="password" name="pass">
+                    <form name="form"><h1>테스트용 사내 로그인</h1><table width="180" align="center"><tr><td width="60"><div align="right">ID :&nbsp;&nbsp;</div></td><td width="120"><input name="id" size="15"></td></tr><tr><td width="60"><div align="right">Password :&nbsp;&nbsp;</div></td><td width="120"><input type="password" name="pass" size="15"></td></tr></table>
                     <button type="button" onclick="document.cookie='meeting-auth=1;path=/;Secure';location.href='pjm.jsp'">로그인</button></form>
                     """;
             }
@@ -62,7 +62,7 @@ internal sealed partial class MeetingWindow
                     + "table[data-fixture-report]{background:#e4ecef;width:560px}</style>"
                     + "<table width=810 cellspacing=0 cellpadding=0><tr><td colspan=4 id=site-top>사내 상단</td></tr>"
                     + "<tr><td width=29 rowspan=2 id=site-left>장식</td><td width=152 rowspan=2 id=site-menu>사내 인원 메뉴</td>"
-                    + "<td width=600 height=35>주간보고</td><td width=29 rowspan=2 id=site-right>장식</td></tr>"
+                    + "<td width=600 height=35><img alt='주간보고' width=600 height=35 src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%2235%22%3E%3Crect width=%22600%22 height=%2235%22 fill=%22%23f3f3f3%22/%3E%3Ctext x=%2225%22 y=%2223%22%3EWeekly report%3C/text%3E%3C/svg%3E'></td><td width=29 rowspan=2 id=site-right>장식</td></tr>"
                     + "<tr><td width=600 valign=top><table width=560 data-fixture-report><tr><td>기간</td><td>2026-10-19 ~ 2026-10-23</td></tr>"
                     + "<tr><td>제목</td><td>10월 넷째 주 보고</td></tr><tr><td>진행사항</td><td>"
                     + string.Join("<p>팀별 진행사항 · 테스트 데이터</p>", Enumerable.Range(0, 70))
@@ -155,10 +155,14 @@ internal sealed partial class MeetingWindow
         Check(ReadReleaseHistory().First().Heading.StartsWith(AppVersion+" ") && ReadReleaseHistory().Length>=2,"앱 버전과 내장 버전별 변경 내역 일치");
         bool versionFields=false;
         _=Dispatcher.BeginInvoke(new Action(async()=>{
-            var popup=OwnedWindows.Cast<Window>().Single(w=>w.Title=="버전 및 업데이트 내역");
+            var popup=OwnedWindows.Cast<Window>().Single(w=>w.Title=="버전 정보");
             await Task.Delay(100);popup.UpdateLayout();
+            var sections=Descendants((DependencyObject)popup.Content).OfType<System.Windows.Controls.Expander>().ToArray();
+            Require(sections.Length==ReadReleaseHistory().Length && sections[0].IsExpanded && sections.Skip(1).All(s=>!s.IsExpanded),"현재 버전만 펼치고 이전 버전은 접어서 표시");
+            sections[1].IsExpanded=true;popup.UpdateLayout();
             var text=Descendants((DependencyObject)popup.Content).OfType<System.Windows.Controls.TextBlock>().Select(t=>t.Text).ToArray();
             versionFields=text.Any(t=>t.Contains(AppVersion)) && text.Any(t=>t.Contains("1.0.0")) && text.Any(t=>t.Contains("형광펜"));
+            sections[1].IsExpanded=false;popup.UpdateLayout();
             var content=(FrameworkElement)popup.Content;
             var bitmap=new RenderTargetBitmap((int)content.ActualWidth,(int)content.ActualHeight,96,96,PixelFormats.Pbgra32);
             var visual=new DrawingVisual();
@@ -168,7 +172,7 @@ internal sealed partial class MeetingWindow
             using(var file=File.Create(Path.Combine(Path.GetTempPath(),"TeamWeeklyMeeting-versions-preview.png")))encoder.Save(file);
             popup.Close();
         }));
-        var historyButton=Descendants((DependencyObject)Content).OfType<System.Windows.Controls.Button>().Single(b=>b.Content?.ToString()?.Contains("업데이트 내역")==true);
+        var historyButton=Descendants((DependencyObject)Content).OfType<System.Windows.Controls.Button>().Single(b=>b.Content?.ToString()=="버전 정보");
         historyButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
         Check(versionFields,"상단 버전 버튼에서 현재·이전 버전 변경 내역 창 열기");
         Check(Icon is System.Windows.Media.Imaging.BitmapSource iconSource && iconSource.PixelWidth>=256 && Application.Current.Resources.Contains("BrandOrange"),"작업표시줄 축소 방지용 고해상도 회사 아이콘 및 브랜드 스타일 적용");
@@ -208,7 +212,8 @@ internal sealed partial class MeetingWindow
         Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('[data-fixture-report]')).display") == "\"table\"", "사내 원본 표 표시");
         Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('[data-fixture-report]')).backgroundColor") == "\"rgb(228, 236, 239)\"", "원본 사이트 색상 유지");
         Check(await core.ExecuteScriptAsync("document.querySelector('[data-fixture-report]').outerHTML === window.__fixtureReportMarkup") == "true", "본문 표 원본 HTML 및 서식 보존");
-        Check(await core.ExecuteScriptAsync("document.querySelector('#meeting-report-viewport').textContent.includes('주간보고')") == "true", "주간보고 제목 영역 포함");
+        Check(await core.ExecuteScriptAsync("document.querySelector('#meeting-report-viewport img').alt==='주간보고'") == "true", "주간보고 제목 영역 포함");
+        Check(await core.ExecuteScriptAsync("Math.abs(document.querySelector('#meeting-report-viewport img').getBoundingClientRect().width-document.querySelector('#meeting-report-viewport').clientWidth)<30") == "true", "고정 크기 제목 이미지도 뷰어 끝까지 확장");
         Check(await core.ExecuteScriptAsync("(()=>{const e=document.querySelector('#site-menu');return !e.getClientRects().length})()") == "true", "사내 좌측 메뉴 숨김");
         Check(await core.ExecuteScriptAsync("['site-top','site-left','site-right'].every(id=>!document.getElementById(id).getClientRects().length)") == "true", "사내 상단 및 좌우 장식 숨김");
         Check(await core.ExecuteScriptAsync("document.querySelector('[data-fixture-report]').getBoundingClientRect().right >= document.documentElement.clientWidth-48") == "true", "보고서가 뷰어 너비를 채워 큰 오른쪽 여백 제거");
