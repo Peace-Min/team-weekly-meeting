@@ -18,6 +18,7 @@ internal sealed partial class MeetingWindow
         void Text(string value, bool bold = false)
         { body.Children.Add(new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12), FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal }); }
         Text("문의 및 버그제보", true);
+        Text("팀 주간보고 v"+AppVersion);
         Text("불편한 점이나 개선 의견을 이메일 또는 랜메신저로 보내 주세요.");
         Text(SupportEmail + "\n랜메신저 민평화", true);
         var mail = new Button { Content = "메일 주소 복사", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 20) };

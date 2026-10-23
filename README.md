@@ -29,6 +29,8 @@ Windows 10 1809 이상 또는 Windows 11의 x64 환경을 대상으로 합니다
 - 팀과 하위 조직의 참석자 체크, 상위 조직 직속 인력 우선 표시.
 - 원본 보고서 디자인 유지, 내용 영역만 표시, 25~500% 확대·축소와 증감 폭 설정.
 - 발표자별 스크롤 유지, 창 분리, 전체 화면 발표.
+- 발표 중 펜·형광펜·획 지우개, 색상·굵기, 되돌리기·전체 지우기와 접을 수 있는 도구막대.
+- 앱 상단의 현재 버전·업데이트 내역. 과거 버전의 변경 내용도 오프라인에서 확인합니다.
 - 공통 로컬 설정 저장. 계정별 설정은 사용하지 않습니다.
 - `%APPDATA%\TeamWeeklyMeeting\logs`의 순환 로그와 상단 **문의 및 버그제보**.
 - 원본 회사 로고, 투명 배경 아이콘, WPF 작업표시줄 아이콘 축소 문제 수정.
@@ -49,7 +51,7 @@ Windows 10 1809 이상 또는 Windows 11의 x64 환경을 대상으로 합니다
 dotnet publish meeting/TeamWeeklyMeeting.csproj -c Release -r win-x64 -o publish/win-x64 --self-contained true
 ```
 
-앱 파일은 `publish/win-x64/`, 설치 패키지는 `dist/installer/NETCUS-TeamWeeklyMeeting-Setup-v1.0.0-win-x64.exe`에 생성됩니다.
+앱 파일은 `publish/win-x64/`, 설치 패키지는 `dist/installer/NETCUS-TeamWeeklyMeeting-Setup-v<버전>-win-x64.exe`에 생성됩니다.
 이 PC에서 빌드한 설치 EXE만 폐쇄망에 반입하면 됩니다. .NET과 WebView2 런타임을 포함하므로 설치 대상 PC에서 별도 다운로드하지 않습니다.
 소스 빌드 PC는 NuGet 패키지 복원이 가능해야 하며, WebView2 오프라인 설치기가 없으면 Microsoft 배포 서버에서 한 번 받습니다. 저장소에 분할 파일이나 Git LFS 파일을 올리지 않습니다.
 
@@ -70,3 +72,4 @@ WebView2 재배포 파일의 Microsoft 서명을 확인합니다.
 
 기존 캘린더에서 가져온 코드와 로고 출처는 [PROVENANCE](PROVENANCE.md), 변경 내역은 [CHANGELOG](CHANGELOG.md)에 기록했습니다.
 릴리스의 실제 설치·제거 및 아이콘·기능 검증 결과는 [VALIDATION](VALIDATION.md)에 있습니다.
+다음 버전의 번호·변경 내역·태그 관리 절차는 [VERSIONING](VERSIONING.md)에 있습니다.

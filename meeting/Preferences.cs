@@ -104,17 +104,18 @@ internal sealed partial class MeetingWindow
         _zoomStep = ReadNumber(_stepInput, 1, 475, "증감 폭");
         return ZoomAsync(direction * _zoomStep);
     }
-    private Task ZoomAsync(int delta)
+    private async Task ZoomAsync(int delta)
     {
         int before=_zoomPercent;
         _zoomPercent = (int)Math.Clamp((long)_zoomPercent + delta, 25, 500);
         _applyingZoom = true;
         try { foreach (var page in _reports) page.Web.ZoomFactor = _zoomPercent / 100.0; }
         finally { _applyingZoom = false; }
+        if(_presentation!=null)foreach(var page in _reports)
+            await page.Web.CoreWebView2.ExecuteScriptAsync("window.__meetingAnnotationScale && window.__meetingAnnotationScale("+(100.0/_zoomPercent).ToString(CultureInfo.InvariantCulture)+")");
         AppLog.Write("view.zoom",new{before,after=_zoomPercent,step=_zoomStep});
         SyncZoomInputs();
         _status.Text = $"보기 배율 {_zoomPercent}% · 증감 {_zoomStep}%";
         PersistSettings();
-        return Task.CompletedTask;
     }
 }

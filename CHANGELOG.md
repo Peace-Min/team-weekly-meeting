@@ -1,19 +1,18 @@
 # Changelog
 
-## Build workflow
+## 1.1.0 · 2026-10-23
 
-- One `dotnet publish ... --self-contained true` command now builds the app and invokes Inno Setup automatically.
-- The selected publish directory is passed to the installer; direct script builds suppress the hook to avoid recursion.
-- Distribution uses the locally generated setup EXE for closed-network import. No split runtime files or Git LFS are used.
+- 앱 상단에 현재 버전과 업데이트 내역 창을 추가했습니다. 버전별 변경 내역을 앱 안에서 확인할 수 있습니다.
+- 발표 중 펜·형광펜·획 지우개·색상·굵기·되돌리기·전체 지우기 도구를 사용할 수 있습니다.
+- 그림은 발표자별로 구분되고 보고서 스크롤과 확대·축소를 따라 움직입니다. 임시 메모이므로 보고서 새로고침이나 앱 종료 시 사라집니다.
+- NETCUS 기본 심볼에 보고서 문서 표시를 더한 전용 앱 아이콘으로 변경했습니다.
 
-## 1.0.0
+## 1.0.0 · 2026-10-22
 
-- Independent Windows app with automatic login and organization refresh.
-- Team hierarchy, attendance checkboxes and ordered weekly report preparation.
-- Original report styling, responsive content, zoom and detached windows.
-- Full-screen presentation with keyboard navigation, mouse drag/wheel and Esc.
-- Shared local preferences, rotating diagnostic logs and contact dialog.
-- Company logo and transparent taskbar icon that fills the native icon area.
-- Organization and users extracted from the authenticated weekly-report page; no DB connection, driver or configuration.
-- Public source without user data or browser sessions.
-- Per-user Windows x64 installer with self-contained .NET and offline WebView2 runtime.
+- 로그인한 사내 웹페이지에서 조직과 사용자 정보를 읽어 팀별 참석자를 선택합니다.
+- 참석자의 최신 주간보고를 원본 디자인으로 준비하고 확대·축소 및 개별 창 분리를 지원합니다.
+- 전체 화면 발표에서 키보드로 발표자를 바꾸고 마우스 드래그·휠로 보고서를 스크롤합니다.
+- 공용 로컬 설정, 진단 로그, 문의 및 버그제보 창을 제공합니다.
+- .NET·WebView2 런타임을 포함한 Windows x64 설치 패키지를 제공합니다.
+- `build-installer.cmd` 또는 publish 명령 한 번으로 앱과 설치 패키지를 생성할 수 있습니다.
+- 설치된 .NET 9 SDK를 사용하며, 이 PC에서 만든 설치 EXE를 폐쇄망에 반입해 배포할 수 있습니다.

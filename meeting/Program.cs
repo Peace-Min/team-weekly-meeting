@@ -76,7 +76,7 @@ internal sealed partial class MeetingWindow : Window
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TeamWeeklyMeeting");
         AppLog.Initialize(_dataDir);
         ApplyBranding();
-        Title = "넷커스터마이즈 · 팀 주간보고";
+        Title = "넷커스터마이즈 · 팀 주간보고 v"+AppVersion;
         Width = 1320; Height = 900; MinWidth = 1000; MinHeight = 720;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         FontFamily = new FontFamily("Malgun Gothic"); FontSize = 13;

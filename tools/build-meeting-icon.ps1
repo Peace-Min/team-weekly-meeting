@@ -26,9 +26,19 @@ $frames = @()
 foreach ($size in $sizes) {
     $visual = [System.Windows.Media.DrawingVisual]::new()
     $draw = $visual.RenderOpen()
-    $width = $size
+    $width = $size * 0.78
     $height = $width * 97 / 104
-    $draw.DrawImage($mark, [System.Windows.Rect]::new(($size-$width)/2,($size-$height)/2,$width,$height))
+    $draw.DrawImage($mark, [System.Windows.Rect]::new(0,0,$width,$height))
+    # A report-page badge distinguishes this tool from other company apps.
+    $draw.PushTransform([System.Windows.Media.ScaleTransform]::new($size/100.0,$size/100.0))
+    $ink=[System.Windows.Media.BrushConverter]::new().ConvertFromString('#28323E')
+    $orange=[System.Windows.Media.BrushConverter]::new().ConvertFromString('#EF7710')
+    $page=[System.Windows.Media.Geometry]::Parse('M 56,40 L 84,40 L 98,54 L 98,98 L 56,98 Z')
+    $draw.DrawGeometry([System.Windows.Media.Brushes]::White,[System.Windows.Media.Pen]::new($ink,3),$page)
+    $draw.DrawGeometry($null,[System.Windows.Media.Pen]::new($ink,3),[System.Windows.Media.Geometry]::Parse('M 84,41 L 84,54 L 97,54'))
+    $draw.DrawRectangle($orange,$null,[System.Windows.Rect]::new(63,61,27,7))
+    foreach($line in @(76,85)){$draw.DrawRectangle($ink,$null,[System.Windows.Rect]::new(63,$line,24,3))}
+    $draw.Pop()
     $draw.Close()
     $bitmap = [System.Windows.Media.Imaging.RenderTargetBitmap]::new($size,$size,96,96,[System.Windows.Media.PixelFormats]::Pbgra32)
     $bitmap.Render($visual)

@@ -1,4 +1,15 @@
-# Release validation: 1.0.0
+# Release validation: 1.1.0
+
+Validated on Windows on 2026-10-23.
+
+- Release build: zero warnings and errors.
+- Real WebView2 smoke QA with the privately supplied page HTML: **132 checks passed**, 84 intercepted requests and 10 synthetic report POSTs. Without the private fixture, 130 checks run. No live site or database access.
+- Version button opens the embedded current and previous release history. The newest entry matches the assembly version.
+- Actual mouse/keyboard input verifies pen, highlighter, colors, width, whole-stroke eraser, undo, clear, toolbar collapse, scroll alignment and presenter isolation. Temporary drawings survive presenter navigation and disappear after report refresh.
+- Presentation disables native browser zoom gestures, restores them on exit, and keeps the annotation toolbar usable at 200% report zoom. Escape hides drawing tools and exits presentation.
+- Native window icon audit: transparent corners and filled 32px canvas, preserving the NETCUS mark with a report badge.
+
+## Previous release: 1.0.0
 
 Validated on Windows on 2026-10-22.
 

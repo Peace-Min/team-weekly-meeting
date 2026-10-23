@@ -24,6 +24,7 @@ internal sealed partial class MeetingWindow
     {
         var core = web.CoreWebView2;
         await core.AddScriptToExecuteOnDocumentCreatedAsync(PresentationInput);
+        await core.AddScriptToExecuteOnDocumentCreatedAsync(AnnotationInput);
         core.WebMessageReceived += (_, e) =>
         {
             if (_closing || !IsCompanyUrl(e.Source) || _people.SelectedIndex < 0
@@ -32,6 +33,13 @@ internal sealed partial class MeetingWindow
             {
                 using var json = JsonDocument.Parse(e.WebMessageAsJson);
                 string? kind=json.RootElement.GetProperty("kind").GetString();
+                if(kind=="meeting-annotation")
+                {
+                    string? action=json.RootElement.GetProperty("action").GetString();
+                    if(_presentation!=null && action is "mode" or "stroke" or "erase" or "undo" or "clear")
+                        AppLog.Write("presentation.annotation",new{action,mode=json.RootElement.GetProperty("mode").GetString(),count=json.RootElement.GetProperty("count").GetInt32(),member=_reports[_people.SelectedIndex].Member.Id});
+                    return;
+                }
                 if(kind=="meeting-input")
                 {
                     string? input=json.RootElement.GetProperty("action").GetString();
@@ -71,7 +79,9 @@ internal sealed partial class MeetingWindow
         {
             web.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = !enabled;
             web.CoreWebView2.Settings.AreDefaultContextMenusEnabled = !enabled;
+            web.CoreWebView2.Settings.IsZoomControlEnabled = !enabled;
             await web.CoreWebView2.ExecuteScriptAsync("window.__meetingPresentation && window.__meetingPresentation(" + (enabled ? "true" : "false") + ")");
+            await web.CoreWebView2.ExecuteScriptAsync("window.__meetingAnnotations && window.__meetingAnnotations(" + (enabled ? "true" : "false") + "," + (1/web.ZoomFactor).ToString(System.Globalization.CultureInfo.InvariantCulture) + ")");
         }
         catch (Exception ex) { AppLog.Write("presentation.input-failed",error:ex); if (!_closing) _status.Text = "보고 모드 입력 설정 실패: " + ex.Message; }
     }
@@ -85,7 +95,7 @@ internal sealed partial class MeetingWindow
         _viewer.Children.Remove(_pages);
         var surface = new Grid { Background = Brushes.White };
         surface.Children.Add(_pages); surface.Children.Add(_presentationEmpty);
-        var window = new Window { Owner = this, Title = "팀 주간보고", Content = surface, WindowStyle = WindowStyle.None,
+        var window = new Window { Owner = this, Icon=Icon, Title = "팀 주간보고", Content = surface, WindowStyle = WindowStyle.None,
             ResizeMode = ResizeMode.NoResize, WindowState = WindowState.Maximized, Background = Brushes.White };
         _presentation = window;
         window.PreviewKeyDown += (_, e) =>
@@ -151,7 +161,7 @@ internal sealed partial class MeetingWindow
           function stopDrag(){
             const previous=drag;drag=null;
             if(previous){inputLog('drag');try{document.documentElement.releasePointerCapture(previous.id)}catch{}}
-            document.documentElement.style.removeProperty('cursor');
+            if(!window.__meetingDrawingActive?.())document.documentElement.style.removeProperty('cursor');
           }
           window.__meetingPresentation = enabled => {
             active=enabled;stopDrag();document.documentElement.classList.toggle('meeting-presenting',enabled);
@@ -160,7 +170,7 @@ internal sealed partial class MeetingWindow
               style.textContent='html.meeting-presenting{user-select:none;cursor:grab}'
                 +'html.meeting-presenting #meeting-report-viewport input[type=button],'
                 +'html.meeting-presenting #meeting-report-viewport input[type=submit],'
-                +'html.meeting-presenting #meeting-report-viewport button{display:none!important}';
+                +'html.meeting-presenting #meeting-report-viewport button:not([data-meeting-tool]){display:none!important}';
               document.head.append(style);
             }
           };
@@ -171,6 +181,7 @@ internal sealed partial class MeetingWindow
             if(!e.repeat)chrome.webview.postMessage({kind:'meeting-presentation-key',key:e.key});
           },true);
           document.addEventListener('pointerdown',e=>{
+            if(e.target.closest('[data-meeting-tools]') || window.__meetingDrawingActive?.())return;
             if(!active || e.button!==0)return;
             e.preventDefault();e.stopImmediatePropagation();drag={id:e.pointerId,x:e.clientX,y:e.clientY};
             try{document.documentElement.setPointerCapture(e.pointerId)}catch{}
@@ -182,7 +193,7 @@ internal sealed partial class MeetingWindow
             drag.x=e.clientX;drag.y=e.clientY;
           },true);
           for(const name of ['pointerup','pointercancel','lostpointercapture'])document.addEventListener(name,stopDrag,true);
-          document.addEventListener('click',e=>{inputLog('click');if(active){e.preventDefault();e.stopImmediatePropagation()}},true);
+          document.addEventListener('click',e=>{if(e.target.closest('[data-meeting-tools]'))return;inputLog('click');if(active){e.preventDefault();e.stopImmediatePropagation()}},true);
         })()
         """;
 }

@@ -17,6 +17,7 @@
 2. `team.select`, `attendee.*`, `presenter.select`, `view.zoom`으로 선택·참석자·발표자·배율 변화를 확인합니다.
 3. `browser.navigation-start/end`의 페이지 경로·탐색 번호·성공 여부·WebErrorStatus와 `report.opened/failed`를 대조합니다.
 4. `presentation.start/key/end`, `browser.input`으로 보고 모드 전환, 키 이동, 드래그·휠 이후 스크롤 위치를 재구성합니다.
+   `presentation.annotation`은 이동·펜·형광펜·지우개 모드와 획 수, 되돌리기·전체 지우기 동작을 기록합니다. 실제 그림 좌표나 그림 내용은 기록하지 않습니다.
 5. `action.failed`, `browser.process-failed`, `app.*-failed`, `app.unhandled`, `app.fatal`의 예외 종류·메시지·스택을 확인합니다.
 6. 조직도 문제는 `directory.page`의 웹페이지 추출 건수와 `directory.loaded`의 조직 부모·순서·구성원 소속을 확인합니다. `directory.page-failed`는 로그인 폼·주간 메뉴 누락·빈 메뉴를 구분합니다. DB에는 접속하지 않습니다.
 

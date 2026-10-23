@@ -26,7 +26,7 @@ $privateFiles = Get-ChildItem -LiteralPath $payload -Recurse -File | Where-Objec
 if ($privateFiles) { throw 'Private configuration/session/log files found in the payload. Use a clean publish directory.' }
 Copy-Item -LiteralPath (Join-Path $root 'README.md'), (Join-Path $root 'LICENSE') -Destination $payload -Force
 Copy-Item -LiteralPath (Join-Path $root 'meeting/DIAGNOSTICS.md') -Destination $payload -Force
-foreach ($name in @('VALIDATION.md','CHANGELOG.md','PROVENANCE.md')) {
+foreach ($name in @('VALIDATION.md','CHANGELOG.md','PROVENANCE.md','VERSIONING.md')) {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination $payload -Force
 }
 $userDocs = Join-Path $payload 'meeting'

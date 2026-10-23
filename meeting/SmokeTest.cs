@@ -152,6 +152,25 @@ internal sealed partial class MeetingWindow
         }
         Check(_loginId == "alpha", "로그인 아이디 연결, 비밀번호 수집 없음");
         Check((string?)_team.SelectedItem == "개발팀", "본인 팀 기본 선택");
+        Check(ReadReleaseHistory().First().Heading.StartsWith(AppVersion+" ") && ReadReleaseHistory().Length>=2,"앱 버전과 내장 버전별 변경 내역 일치");
+        bool versionFields=false;
+        _=Dispatcher.BeginInvoke(new Action(async()=>{
+            var popup=OwnedWindows.Cast<Window>().Single(w=>w.Title=="버전 및 업데이트 내역");
+            await Task.Delay(100);popup.UpdateLayout();
+            var text=Descendants((DependencyObject)popup.Content).OfType<System.Windows.Controls.TextBlock>().Select(t=>t.Text).ToArray();
+            versionFields=text.Any(t=>t.Contains(AppVersion)) && text.Any(t=>t.Contains("1.0.0")) && text.Any(t=>t.Contains("형광펜"));
+            var content=(FrameworkElement)popup.Content;
+            var bitmap=new RenderTargetBitmap((int)content.ActualWidth,(int)content.ActualHeight,96,96,PixelFormats.Pbgra32);
+            var visual=new DrawingVisual();
+            using(var drawing=visual.RenderOpen())drawing.DrawRectangle(new VisualBrush(content),null,new Rect(0,0,content.ActualWidth,content.ActualHeight));
+            bitmap.Render(visual);
+            var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using(var file=File.Create(Path.Combine(Path.GetTempPath(),"TeamWeeklyMeeting-versions-preview.png")))encoder.Save(file);
+            popup.Close();
+        }));
+        var historyButton=Descendants((DependencyObject)Content).OfType<System.Windows.Controls.Button>().Single(b=>b.Content?.ToString()?.Contains("업데이트 내역")==true);
+        historyButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        Check(versionFields,"상단 버전 버튼에서 현재·이전 버전 변경 내역 창 열기");
         Check(Icon is System.Windows.Media.Imaging.BitmapSource iconSource && iconSource.PixelWidth>=256 && Application.Current.Resources.Contains("BrandOrange"),"작업표시줄 축소 방지용 고해상도 회사 아이콘 및 브랜드 스타일 적용");
         Check(_reportStartButton?.IsEnabled==false && _reportStartButton.ToolTip?.ToString()?.Contains("먼저 준비")==true,"보고서 준비 전 보고 시작 버튼 비활성화 및 안내");
         var firstRoot=(System.Windows.Controls.TreeViewItem)_attendance.Items[0];
@@ -284,13 +303,59 @@ internal sealed partial class MeetingWindow
         Check(!_viewer.Children.Contains(_pages) && ((System.Windows.Controls.Grid)_presentation!.Content).Children.Count==2, "보고 모드에 설정 레이아웃 없이 보고서만 표시");
         Check(await core.ExecuteScriptAsync("document.documentElement.classList.contains('meeting-presenting')")=="true", "보고 모드 브라우저 입력 활성화");
         Check(!core.Settings.AreBrowserAcceleratorKeysEnabled && !core.Settings.AreDefaultContextMenusEnabled, "보고 모드 중 브라우저 이동 단축키 및 메뉴 비활성화");
+        Check(!core.Settings.IsZoomControlEnabled,"그리기 위치 보호를 위해 발표 중 실수로 Ctrl+휠 배율 변경 방지");
         Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('#fixture-action')).display")=="\"none\"", "보고 모드에서 사이트 편집 버튼 숨김");
         await core.ExecuteScriptAsync("document.querySelector('#fixture-action').click()");
         Check(await core.ExecuteScriptAsync("!!window.actionTaken")=="false", "보고 모드에서 사이트 클릭 실행 방지");
+        async Task InkMode(string mode)=>await core.ExecuteScriptAsync("document.querySelector('[data-mode="+mode+"]').click()");
+        async Task InkAction(string action)=>await core.ExecuteScriptAsync("document.querySelector('[data-action="+action+"]').click()");
+        async Task InkDrag(double x1,double y1,double x2,double y2)
+        {
+            await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mouseMoved",x=x1,y=y1}));
+            await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mousePressed",x=x1,y=y1,button="left",buttons=1,clickCount=1}));
+            await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mouseMoved",x=x2,y=y2,buttons=1}));
+            await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mouseReleased",x=x2,y=y2,button="left",buttons=0,clickCount=1}));
+            await Task.Delay(80);
+        }
+        Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('#meeting-drawing-tools')).display")=="\"flex\"","발표 화면에서 그리기 도구막대 표시");
+        string penPoint=await core.ExecuteScriptAsync("(()=>{const r=document.querySelector('[data-mode=pen]').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()");
+        using(var point=JsonDocument.Parse(penPoint)){double x=point.RootElement.GetProperty("x").GetDouble(),y=point.RootElement.GetProperty("y").GetDouble();await InkDrag(x,y,x,y);}
+        Check(await core.ExecuteScriptAsync("window.__meetingDrawingActive()")=="true","실제 마우스로 도구막대 펜 버튼 선택");
+        await InkDrag(230,260,330,280);
+        Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="1","실제 마우스 드래그로 펜 획 생성");
+        Check(await core.ExecuteScriptAsync("document.documentElement.style.cursor==='crosshair'")=="true","펜 획을 그린 후에도 그리기 커서 유지");
+        Check(await core.ExecuteScriptAsync("window.scrollY")=="500","그리기 중 본문 드래그 스크롤과 충돌하지 않음");
+        string originalStroke=await core.ExecuteScriptAsync("document.querySelector('#meeting-ink path').getAttribute('d')");
+        double strokeTop=double.Parse(await core.ExecuteScriptAsync("document.querySelector('#meeting-ink path').getBoundingClientRect().top"),System.Globalization.CultureInfo.InvariantCulture);
+        await core.ExecuteScriptAsync("window.scrollBy(0,100)");
+        Check(await core.ExecuteScriptAsync("document.querySelector('#meeting-ink path').getAttribute('d')")==originalStroke,"스크롤 후에도 그림 좌표는 보고서 위치에 유지");
+        Check(Math.Abs(double.Parse(await core.ExecuteScriptAsync("document.querySelector('#meeting-ink path').getBoundingClientRect().top"),System.Globalization.CultureInfo.InvariantCulture)-strokeTop+100)<1,"그림이 보고서와 함께 스크롤됨");
+        await core.ExecuteScriptAsync("window.scrollTo(0,500)");
+        await InkMode("highlight");await core.ExecuteScriptAsync("document.querySelector('[data-color=\"#2563eb\"]').click();const s=document.querySelector('#meeting-drawing-tools select');s.value='7';s.dispatchEvent(new Event('change'))");
+        await InkDrag(400,260,500,280);
+        Check(await core.ExecuteScriptAsync("(()=>{const p=document.querySelector('#meeting-ink path:last-child');return p.getAttribute('stroke')==='#2563eb'&&p.getAttribute('opacity')==='0.3'&&p.getAttribute('stroke-width')==='28'})()")=="true","형광펜 색상·선 굵기·반투명도 반영");
+        await core.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent","{\"type\":\"keyDown\",\"key\":\"z\",\"code\":\"KeyZ\",\"modifiers\":2,\"windowsVirtualKeyCode\":90}");
+        await core.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent","{\"type\":\"keyUp\",\"key\":\"z\",\"code\":\"KeyZ\",\"modifiers\":2,\"windowsVirtualKeyCode\":90}");
+        Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="1","Ctrl+Z로 직전 획 되돌리기");
+        await InkMode("erase");await InkDrag(260,266,270,268);
+        Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="0","실제 마우스 지우개로 해당 획 삭제");
+        await InkAction("undo");Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="1","지우개 동작 되돌리기");
+        await InkAction("clear");Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="0","현재 발표자 그림 전체 지우기");
+        await InkAction("undo");
+        await InkAction("toggle");Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('.ink-options')).display")=="\"none\"","도구막대 접기로 보고서 가림 최소화");await InkAction("toggle");
+        await ZoomAsync(100);
+        await Task.Delay(150);
+        string inkSizing=await core.ExecuteScriptAsync("(()=>{const t=document.querySelector('#meeting-drawing-tools'),r=t.getBoundingClientRect();return {height:r.height,width:r.width,inner:innerWidth,transform:t.style.transform,max:t.style.maxWidth}})()");
+        Check(await core.ExecuteScriptAsync("document.querySelector('#meeting-drawing-tools').getBoundingClientRect().height*2<90")=="true","200% 보고서 배율에서도 도구막대 크기 유지: "+inkSizing);
+        await ZoomAsync(-100);
+        using(var inkPreview=File.Create(Path.Combine(Path.GetTempPath(),"TeamWeeklyMeeting-ink-preview.png")))await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,inkPreview);
+        await InkMode("move");
         await BrowserKeyAsync(core,"ArrowRight",39);await Task.Delay(150);
         Check(_people.SelectedIndex==1, "브라우저에 포커스가 있어도 오른쪽 방향키로 다음 발표자");
+        Check(await _reports[1].Web.CoreWebView2.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="0","발표자별 그림 분리");
         await BrowserKeyAsync(_reports[1].Web.CoreWebView2,"ArrowLeft",37);await Task.Delay(150);
         Check(_people.SelectedIndex==0, "왼쪽 방향키로 이전 발표자");
+        Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="1","이전 발표자로 돌아오면 그림 유지");
         Check(await core.ExecuteScriptAsync("window.scrollY")=="500", "발표자 전환 시 보고서 위치 유지");
         await core.ExecuteScriptAsync("window.scrollTo(0,0)");
         await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent","{\"type\":\"mouseMoved\",\"x\":200,\"y\":350}");
@@ -312,12 +377,16 @@ internal sealed partial class MeetingWindow
             await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,preview);
         await BrowserKeyAsync(core,"Escape",27);await Task.Delay(250);
         Check(_presentation==null && _viewer.Children.Contains(_pages), "브라우저 포커스에서 Esc로 보고 모드 종료 및 레이아웃 복원");
+        Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('#meeting-ink')).display==='none'&&getComputedStyle(document.querySelector('#meeting-drawing-tools')).display==='none'")=="true","발표 종료 시 그림과 도구막대 숨김");
         Check(core.Settings.AreBrowserAcceleratorKeysEnabled && core.Settings.AreDefaultContextMenusEnabled, "보고 모드 종료 시 브라우저 단축키 및 메뉴 복원");
+        Check(core.Settings.IsZoomControlEnabled,"발표 종료 후 일반 화면 배율 조작 복원");
         Check(await core.ExecuteScriptAsync("document.documentElement.classList.contains('meeting-presenting')")=="false", "종료 후 드래그·키보드 가로채기 해제");
         await core.ExecuteScriptAsync("document.querySelector('#fixture-action').click()");
         Check(await core.ExecuteScriptAsync("!!window.actionTaken")=="true", "보고 모드 종료 후 사이트 직접 조작 복원");
         await StartPresentationAsync();await Task.Delay(100);HandlePresentationKey("Escape");await Task.Delay(150);
         Check(_presentation==null && _viewer.Children.Contains(_pages), "보고 모드 반복 진입 및 종료");
+        await RefreshSelectedAsync();
+        Check(await core.ExecuteScriptAsync("document.getElementById('meeting-ink')===null")=="true","보고서 새로고침 시 임시 그림 초기화");
         bool supportFields=false;
         _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,new Action(async()=>{
             var popup=OwnedWindows.Cast<Window>().Single(w=>w.Title=="문의 및 버그제보");
