@@ -16,6 +16,11 @@ internal sealed partial class MeetingWindow
     private int _fixtureRequests;
     private int _fixturePosts;
     private string _smokeLoginId = "alpha";
+    private bool _smokeRemember;
+    private bool _smokeCancelLogin,_smokeDisableRemember,_smokeRejectFirst,_smokeBlockSave,_smokeSuppressCapture;
+    private const string SmokePassword="qa-only-password-!42";
+    private string _fixtureAuthMode="success";
+    private int _fixtureAuthPosts;
 
     private void InstallFixture(CoreWebView2 core)
     {
@@ -25,25 +30,44 @@ internal sealed partial class MeetingWindow
             _fixtureRequests++;
             var uri = new Uri(e.Request.Uri);
             string body;
-            if (uri.AbsolutePath == "/favicon.ico") body = "";
+            int responseStatus=200;string responseHeaders="Content-Type: text/html; charset=utf-8";
+            if(uri.AbsolutePath=="/pjm/loginRSA.jsp")
+            {
+                _fixtureAuthPosts++;
+                using var loginReader=new StreamReader(e.Request.Content,Encoding.UTF8,leaveOpen:true);
+                string fields=loginReader.ReadToEnd();
+                string id=Uri.UnescapeDataString(fields.Split('&').First(value=>value.StartsWith("id="))[3..]);
+                if(_fixtureAuthMode is "server" or "network") {responseStatus=_fixtureAuthMode=="server"?503:502;body="<h1>Unavailable</h1>";}
+                else if(_fixtureAuthMode is "rejected" or "locked" or "disabled" or "alert")body=(_fixtureAuthMode=="alert"?"<script>alert('인증 거부')</script>":"")+"<p>인증이 거부되었습니다</p><input type=password>";
+                else{
+                    if(_fixtureAuthMode=="mismatch")id="beta";
+                    responseHeaders+="\r\nSet-Cookie: meeting-auth="+id+"; Path=/; Secure; HttpOnly";
+                    body=FixtureOrgMenu+"<form><input type=hidden name=id value='"+id+"'><input type=hidden name=table_code value=report_tbl></form>";
+                }
+            }
+            else if (uri.AbsolutePath == "/favicon.ico") body = "";
             else if (uri.AbsolutePath == "/pjm/login.htm" || !e.Request.Headers.Contains("Cookie")
-                || !e.Request.Headers.GetHeader("Cookie").Contains("meeting-auth=1"))
+                || !e.Request.Headers.GetHeader("Cookie").Contains("meeting-auth="))
             {
                 body = """
                     <form name="form"><h1>테스트용 사내 로그인</h1><table width="180" align="center"><tr><td width="60"><div align="right">ID :&nbsp;&nbsp;</div></td><td width="120"><input name="id" size="15"></td></tr><tr><td width="60"><div align="right">Password :&nbsp;&nbsp;</div></td><td width="120"><input type="password" name="pass" size="15"></td></tr></table>
-                    <button type="button" onclick="document.cookie='meeting-auth=1;path=/;Secure';location.href='pjm.jsp'">로그인</button></form>
+                    <button type="button" onclick="goLogin()">로그인</button></form>
+                    <script>function goLogin(){const f=document.forms.form;if(!f.id.value||!f.pass.value)return;f.pass.value='xxxxxxxxx';f.method='post';f.action='loginRSA.jsp';f.requestSubmit()}</script>
                     """;
+                if(_fixtureAuthMode=="structure")body=body.Replace("function goLogin()","function changedLogin()");
+                if(_fixtureAuthMode=="timeout")body=body.Replace("f.requestSubmit()","void 0");
             }
             else if (uri.AbsolutePath == "/pjm/pjm.jsp")
             {
                 string id = uri.Query.Contains("id=beta") ? "beta" : uri.Query.Contains("id=empty") ? "empty"
-                    : uri.Query.Contains("id=denied") ? "denied" : uri.Query.Contains("id=expired") ? "expired" : "alpha";
+                    : uri.Query.Contains("id=denied") ? "denied" : uri.Query.Contains("id=expired") ? "expired"
+                    : e.Request.Headers.GetHeader("Cookie").Contains("meeting-auth=beta")?"beta":"alpha";
                 if (id == "denied") body = "<h1>접근할 수 없습니다</h1>";
                 else if (id == "expired") body = "<input type=password>";
                 else
                 {
                     string links = FixtureOrgMenu;
-                    body = links + "<form><input type=hidden name=table_code value=report_tbl></form>";
+                    body = links + "<form><input type=hidden name=id value='"+id+"'><input type=hidden name=table_code value=report_tbl></form>";
                     if (id != "empty") body += "<table><tr><td><a href=\"javascript:go_view('"
                         + (id == "alpha" ? "7" : "8") + "')\">맨 위 보고서</a></td><td>2026-10-22</td></tr>"
                         + "<tr><td><a href=\"javascript:go_view('900')\">둘째 보고서</a></td><td>2026-10-15</td></tr></table>";
@@ -71,7 +95,7 @@ internal sealed partial class MeetingWindow
             }
             else body = "<h1>알 수 없는 테스트 경로</h1>";
             var stream = new MemoryStream(Encoding.UTF8.GetBytes("<!doctype html><meta charset=utf-8>" + body));
-            e.Response = _environment!.CreateWebResourceResponse(stream, 200, "OK", "Content-Type: text/html; charset=utf-8");
+            e.Response = _environment!.CreateWebResourceResponse(stream,responseStatus,responseStatus==200?"OK":"Unavailable",responseHeaders);
         };
     }
 
@@ -150,7 +174,7 @@ internal sealed partial class MeetingWindow
             Check(actual.Units.Select(u=>u.Name).Distinct().Count()==actual.Units.Length && actual.Members.Select(m=>m.Id).Distinct().Count()==actual.Members.Length,"실제 페이지의 반복 조직과 사용자 중복 제거");
             AppLog.Write("qa.page-source",new{units=actual.Units.Length,members=actual.Members.Length});
         }
-        Check(_loginId == "alpha", "로그인 아이디 연결, 비밀번호 수집 없음");
+        Check(_loginId == "alpha"&&!_auth.Exists, "로그인 계정 연결 및 기본 자동로그인 저장 해제");
         Check((string?)_team.SelectedItem == "개발팀", "본인 팀 기본 선택");
         Check(ReadReleaseHistory().First().Heading.StartsWith(AppVersion+" ") && ReadReleaseHistory().Length>=2,"앱 버전과 내장 버전별 변경 내역 일치");
         bool versionFields=false;
@@ -292,15 +316,15 @@ internal sealed partial class MeetingWindow
         string alphaSettings=SettingsPath;
         _smokeLoginId="beta";
         Check(await SignInAsync(), "다른 계정 로그인");await LoadDirectoryAsync();
-        Check(_loginId=="beta" && _zoomPercent==175 && _zoomStep==7 && SelectedAttendees().Length==2, "로그인 계정과 관계없이 공용 설정 유지");
+        Check(_loginId=="beta" && _zoomPercent==175 && _zoomStep==7 && SelectedAttendees().Length==0, "계정 전환 시 공용 배율 유지 및 이전 참석자 초기화");
         Check(SettingsPath==alphaSettings && !Directory.Exists(Path.Combine(_dataDir,"accounts")), "계정별 설정 파일 생성 기능 제거");
         _zoomInput.Text="240";_stepInput.Text="15";await ApplyZoomInputsAsync();
         Choose("검증팀","denied");SaveMeetingSettings();
         _smokeLoginId="alpha";
         Check(await SignInAsync(), "원래 계정 재로그인");await LoadDirectoryAsync();
-        Check(_zoomPercent==240 && _zoomStep==15 && (string?)_team.SelectedItem=="검증팀", "다른 계정으로 로그인해도 마지막 공용 배율·증감 폭·팀 유지");
+        Check(_zoomPercent==240 && _zoomStep==15 && (string?)_team.SelectedItem=="개발팀", "계정 전환 시 공용 배율·증감 폭 유지 및 본인 조직으로 갱신");
         Check(Math.Abs(Width-1180)<1 && Math.Abs(Height-780)<1, "공용 창 크기 유지");
-        Check(SelectedAttendees().Select(m=>m.Id).ToHashSet().SetEquals(new[]{"denied"}), "공용 당일 참석자 유지");
+        Check(SelectedAttendees().Length==0, "다른 계정의 참석자는 자동 복원하지 않음");
         Choose("개발팀","alpha","beta","empty");await PrepareAsync();
         await ZoomAsync(100-_zoomPercent);
         _people.SelectedIndex=0;SelectPerson();core=_reports[0].Web.CoreWebView2;
@@ -320,6 +344,7 @@ internal sealed partial class MeetingWindow
         {
             await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mouseMoved",x=x1,y=y1}));
             await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mousePressed",x=x1,y=y1,button="left",buttons=1,clickCount=1}));
+            await Task.Delay(30);
             await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mouseMoved",x=x2,y=y2,buttons=1}));
             await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent",JsonSerializer.Serialize(new{type="mouseReleased",x=x2,y=y2,button="left",buttons=0,clickCount=1}));
             await Task.Delay(80);
@@ -344,7 +369,11 @@ internal sealed partial class MeetingWindow
         await core.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent","{\"type\":\"keyDown\",\"key\":\"z\",\"code\":\"KeyZ\",\"modifiers\":2,\"windowsVirtualKeyCode\":90}");
         await core.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent","{\"type\":\"keyUp\",\"key\":\"z\",\"code\":\"KeyZ\",\"modifiers\":2,\"windowsVirtualKeyCode\":90}");
         Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="1","Ctrl+Z로 직전 획 되돌리기");
-        await InkMode("erase");await InkDrag(260,266,270,268);
+        await InkMode("erase");
+        // Hit the rendered stroke, accounting for the browser's current scroll/compositor state.
+        using(var point=JsonDocument.Parse(await core.ExecuteScriptAsync("(()=>{const path=document.querySelector('#meeting-ink path');const p=path.getPointAtLength(path.getTotalLength()/2);const q=new DOMPoint(p.x,p.y).matrixTransform(path.getScreenCTM());return {x:q.x,y:q.y}})()"))){
+            double x=point.RootElement.GetProperty("x").GetDouble(),y=point.RootElement.GetProperty("y").GetDouble();await InkDrag(x,y,x+2,y+2);
+        }
         Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="0","실제 마우스 지우개로 해당 획 삭제");
         await InkAction("undo");Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="1","지우개 동작 되돌리기");
         await InkAction("clear");Check(await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="0","현재 발표자 그림 전체 지우기");
@@ -427,6 +456,7 @@ internal sealed partial class MeetingWindow
         await Task.Delay(200);
         Check(await _reports[0].Web.CoreWebView2.ExecuteScriptAsync("document.querySelector('[data-fixture-report]').getBoundingClientRect().right >= document.documentElement.clientWidth-48") == "true", "창 축소 후에도 본문 너비 자동 조절");
         await CapturePreviewAsync("TeamWeeklyMeeting-preview-small.png");
+        await SmokeAutoLoginAsync(Check);
         File.WriteAllText(Path.Combine(Path.GetTempPath(),"TeamWeeklyMeeting-smoke-result.txt"),
             $"PASS: {checks} checks; {_fixtureRequests} intercepted requests; {_fixturePosts} report POSTs.\n");
         Close();

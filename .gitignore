@@ -12,6 +12,8 @@ redist/*.exe
 *.local.json
 connection.json
 meeting.json
+autologin.dat
+autologin.dat.tmp
 WebView2/
 work/
 Thumbs.db

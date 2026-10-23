@@ -12,7 +12,7 @@ $group='NETCUS 팀 주간보고'
 $shortcut=Join-Path ([Environment]::GetFolderPath('Programs')) "$group/NETCUS 팀 주간보고.lnk"
 if(Test-Path $shortcut){throw 'An existing app shortcut exists; QA will not overwrite it'}
 $settingsBefore=@{}
-foreach($name in @('connection.json','meeting.json')){
+foreach($name in @('connection.json','meeting.json','autologin.dat')){
     $path=Join-Path $env:APPDATA "TeamWeeklyMeeting/$name"
     if(Test-Path $path){$settingsBefore[$path]=(Get-FileHash -LiteralPath $path).Hash}
 }
@@ -39,7 +39,7 @@ try {
     foreach($name in @('TeamWeeklyMeeting.exe','coreclr.dll','README.md','DIAGNOSTICS.md','unins000.exe')){
         if(-not(Test-Path (Join-Path $qaDir $name))){throw "Missing installed file: $name"}
     }
-    foreach($name in @('connection.json','connection.example.json','meeting.json','TaskCalendarWidget.dll','MySqlConnector.dll')){
+    foreach($name in @('connection.json','connection.example.json','meeting.json','autologin.dat','autologin.dat.tmp','TaskCalendarWidget.dll','MySqlConnector.dll')){
         if(Test-Path (Join-Path $qaDir $name)){throw "Unexpected private/legacy file: $name"}
     }
     if((Get-FileHash $installedExe).Hash -ne (Get-FileHash (Join-Path $root 'publish/win-x64/TeamWeeklyMeeting.exe')).Hash){throw 'Installed EXE differs from payload'}

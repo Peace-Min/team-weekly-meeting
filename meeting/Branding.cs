@@ -36,6 +36,10 @@ internal sealed partial class MeetingWindow
         var history=new Button{Content="버전 정보",Style=(Style)FindResource("HeaderButton"),
             VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,10,0)};
         history.Click+=(_,_)=>ShowVersionHistory();DockPanel.SetDock(history,Dock.Right);header.Children.Add(history);
+        _accountButton=Command("로그인",AccountActionAsync);_accountButton.Style=(Style)FindResource("HeaderButton");
+        _accountButton.Margin=new Thickness(0,0,12,0);_accountButton.VerticalAlignment=VerticalAlignment.Center;
+        DockPanel.SetDock(_accountButton,Dock.Right);header.Children.Add(_accountButton);
+        DockPanel.SetDock(_accountText,Dock.Right);header.Children.Add(_accountText);UpdateAccountHeader();
         var mark = new Image { Source = logo,
             Width = 48, Height = 48, Margin = new Thickness(0, 0, 14, 0), Stretch = Stretch.Uniform };
         DockPanel.SetDock(mark, Dock.Left); header.Children.Add(mark);

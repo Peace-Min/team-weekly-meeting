@@ -75,6 +75,7 @@ internal sealed partial class MeetingWindow : Window
         _dataDir = smoke ? Path.Combine(Path.GetTempPath(), "TeamWeeklyMeeting-smoke-" + Guid.NewGuid().ToString("N"))
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TeamWeeklyMeeting");
         AppLog.Initialize(_dataDir);
+        _auth=new AuthStore(Path.Combine(_dataDir,"autologin.dat"));
         ApplyBranding();
         Title = "넷커스터마이즈 · 팀 주간보고 v"+AppVersion;
         Width = 1320; Height = 900; MinWidth = 1000; MinHeight = 720;
@@ -169,7 +170,7 @@ internal sealed partial class MeetingWindow : Window
             await NavigateAsync(_login.CoreWebView2, () => _login.CoreWebView2.Navigate(Home));
             await SmokeTestAsync();
         }
-        else if (await SignInAsync()) await LoadDirectoryAsync();
+        else if (await AuthenticateAsync()) await LoadDirectoryAsync();
         else { _closing = true; Close(); }
     }
 
@@ -179,7 +180,8 @@ internal sealed partial class MeetingWindow : Window
         if (web != _login) web.ZoomFactor = _zoomPercent / 100.0;
         if (web != _login) await AttachReportControls(web);
         var core = web.CoreWebView2;
-        core.NavigationCompleted += (_, e) => AppLog.Write("browser.navigation-end",new{role=web==_login?"login":"report",url=LogUrl(core.Source),e.NavigationId,e.IsSuccess,error=e.WebErrorStatus.ToString()});
+        core.Profile.IsPasswordAutosaveEnabled=false;core.Profile.IsGeneralAutofillEnabled=false;
+        core.NavigationCompleted += (_, e) => AppLog.Write("browser.navigation-end",new{role=web==_login?"login":"report",url=LogUrl(core.Source),e.NavigationId,e.IsSuccess,httpStatus=e.HttpStatusCode,error=e.WebErrorStatus.ToString()});
         core.ProcessFailed += (_, e) => AppLog.Write("browser.process-failed",new{kind=e.ProcessFailedKind.ToString(),state=Snapshot()});
         if (web == _login) await TrackLoginIdAsync(core);
         core.Settings.AreDefaultScriptDialogsEnabled = true;
@@ -211,25 +213,26 @@ internal sealed partial class MeetingWindow : Window
         && uri.Scheme == "https" && (uri.Host == "www.netcus.com" || uri.Host == "netcus.com");
 
     // Navigation handlers always leave on the UI thread, including timeout and script failure.
-    private async Task NavigateAsync(CoreWebView2 core, Action start)
+    private async Task NavigateAsync(CoreWebView2 core, Action start, CancellationToken cancellationToken=default)
     {
         var completion = new TaskCompletionSource<bool>();
         ulong? navigationId = null;
         void Starting(object? s, CoreWebView2NavigationStartingEventArgs e) => navigationId ??= e.NavigationId;
         void Completed(object? s, CoreWebView2NavigationCompletedEventArgs e)
         {
-            if (e.NavigationId == navigationId) completion.TrySetResult(e.IsSuccess);
+            if (e.NavigationId == navigationId) completion.TrySetResult(e.IsSuccess && e.HttpStatusCode<400);
         }
         core.NavigationStarting += Starting;
         core.NavigationCompleted += Completed;
         try
         {
-            start();
-            bool success = await completion.Task.WaitAsync(TimeSpan.FromSeconds(20));
+            cancellationToken.ThrowIfCancellationRequested();start();
+            bool success = await completion.Task.WaitAsync(TimeSpan.FromSeconds(20),cancellationToken);
             if (_closing) throw new OperationCanceledException();
             if (!success) throw new IOException("사내 페이지를 열지 못했습니다. 사내망 연결을 확인하세요.");
         }
         catch (TimeoutException) { core.Stop(); throw new IOException("페이지 응답이 20초를 넘었습니다. 다시 준비해 주세요."); }
+        catch (OperationCanceledException){core.Stop();throw;}
         finally
         {
             core.NavigationStarting -= Starting;
@@ -254,7 +257,8 @@ internal sealed partial class MeetingWindow : Window
         await NavigateAsync(_login.CoreWebView2, () => _login.CoreWebView2.Navigate(Home));
         if (!await LoggedInAsync(_login.CoreWebView2))
         {
-            if (await SignInAsync()) await RefreshDirectoryForAccountAsync();
+            ResetAccountView();
+            if (await AuthenticateAsync()) await RefreshDirectoryForAccountAsync();
             return false;
         }
         bool recognized = await _login.CoreWebView2.ExecuteScriptAsync(
@@ -295,7 +299,8 @@ internal sealed partial class MeetingWindow : Window
             if (page.Detail.StartsWith("로그인이 필요"))
             {
                 _status.Text = "세션이 만료되어 준비를 중단했습니다. 로그인 후 전체 보고서를 다시 준비하세요.";
-                if (await SignInAsync()) await RefreshDirectoryForAccountAsync();
+                ResetAccountView();
+                if (await AuthenticateAsync()) await RefreshDirectoryForAccountAsync();
                 return;
             }
         }

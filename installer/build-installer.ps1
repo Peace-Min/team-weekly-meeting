@@ -21,7 +21,7 @@ if (-not $SkipPublish) {
 }
 if (-not (Test-Path (Join-Path $payload 'TeamWeeklyMeeting.exe'))) { throw 'Application payload is missing' }
 $privateFiles = Get-ChildItem -LiteralPath $payload -Recurse -File | Where-Object {
-    $_.Name -in @('connection.json', 'connection.example.json', 'meeting.json', 'Cookies', 'MySqlConnector.dll', 'TaskCalendarWidget.dll') -or $_.Extension -eq '.log' -or $_.Name -match '\.log\.\d+$' -or $_.FullName -match '[\\/]WebView2[\\/]'
+    $_.Name -in @('connection.json', 'connection.example.json', 'meeting.json', 'autologin.dat', 'autologin.dat.tmp', 'Cookies', 'MySqlConnector.dll', 'TaskCalendarWidget.dll') -or $_.Extension -eq '.log' -or $_.Name -match '\.log\.\d+$' -or $_.FullName -match '[\\/]WebView2[\\/]'
 }
 if ($privateFiles) { throw 'Private configuration/session/log files found in the payload. Use a clean publish directory.' }
 Copy-Item -LiteralPath (Join-Path $root 'README.md'), (Join-Path $root 'LICENSE') -Destination $payload -Force
@@ -32,6 +32,7 @@ foreach ($name in @('VALIDATION.md','CHANGELOG.md','PROVENANCE.md','VERSIONING.m
 $userDocs = Join-Path $payload 'meeting'
 New-Item -ItemType Directory -Path $userDocs -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'meeting/README.md'), (Join-Path $root 'meeting/DIAGNOSTICS.md') -Destination $userDocs -Force
+Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $payload -Recurse -Force
 
 $runtime = Join-Path $root 'redist/MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
 if (-not (Test-Path $runtime)) {

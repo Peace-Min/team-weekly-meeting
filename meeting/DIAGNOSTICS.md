@@ -22,6 +22,8 @@
 6. 조직도 문제는 `directory.page`의 웹페이지 추출 건수와 `directory.loaded`의 조직 부모·순서·구성원 소속을 확인합니다. `directory.page-failed`는 로그인 폼·주간 메뉴 누락·빈 메뉴를 구분합니다. DB에는 접속하지 않습니다.
 
 `action.end`에는 소요 시간과 최종 상태가 있습니다. 설정 읽기·저장 오류, 로그인 취소, 문의창 열기·복사·로그 폴더 열기도 기록합니다.
+
+자동로그인은 `auth.auto-start/success/failed/skipped`, 저장·해제는 `auth.remember-saved/disabled`, 파일 오류는 `auth.storage-failed`, 로그아웃은 `auth.logout-start/complete`로 확인합니다. `browser.navigation-end`의 HTTP 상태와 WebErrorStatus로 인증 거부와 연결 오류를 구분합니다. 상세 원인 코드는 [Wiki](../docs/wiki/Troubleshooting.md)에 있습니다. 인증 파일 `autologin.dat`는 문의 자료에 포함하지 마세요.
 휠 입력은 묶어서 기록하여 과도한 로그를 줄입니다. 로그 경로가 기록된 폴더에서 전체 파일을 받으면 회전 직전의 동작도 분석할 수 있습니다.
 
 ## 기록 범위

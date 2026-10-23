@@ -53,7 +53,6 @@ internal sealed partial class MeetingWindow
 
     private void SaveMeetingSettings()
     {
-        if(_team.SelectedItem==null)return;
         Directory.CreateDirectory(_dataDir);
         var saved=new MeetingSettings(_team.SelectedItem as string??"",MeetingDate,SelectedAttendees().Select(m=>m.Id).ToArray(),
             _zoomPercent,_zoomStep,WindowState==WindowState.Normal?Width:RestoreBounds.Width,

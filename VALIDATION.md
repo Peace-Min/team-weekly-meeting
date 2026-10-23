@@ -1,4 +1,13 @@
-# Release validation: 1.1.2
+# Release validation: 1.2.0
+
+Validated on Windows on 2026-10-23. Work order: design specification → implementation → QA → Wiki.
+
+- Release build: zero warnings/errors. Real WPF/WebView2 fixture suite: **191 checks passed**, including **58 authentication checks**; 173 intercepted requests and 10 synthetic report POSTs. Without the private page HTML, 189 checks run.
+- Verified opt-in only, pre-RSA password capture, DPAPI-protected file, session identity matching, expired session authentication, per-run attempt limit, actual 20-second timeout, rejected/locked/disabled/alert/mismatched account, HTTP 503/502, native WebView2 canceled navigation, file corruption/invalid/null data/wrong protection context/IO failures, manual recovery, logout and account isolation, absence of secrets in diagnostic logs.
+- Wiki: `docs/wiki/Home.md`, usage/storage policy, troubleshooting, and per-case QA evidence. Included in source clones and installers.
+- Scope: synthetic authentication responses, not live employee logins. A different Windows user session was not available; wrong-protection-context rejection was tested. Live RSA/server integration and physical network interruption remain environment-specific acceptance checks.
+
+## Previous release: 1.1.2
 
 Validated on Windows on 2026-10-23.
 
@@ -59,3 +68,4 @@ pwsh -File tools/test-release.ps1 -ExePath 'C:\path\to\TeamWeeklyMeeting.exe'
 
 The app and installer are unsigned. Live employee logins and network access remain
 environment-specific. Organization data comes from the authenticated page, with no DB dependency.
+

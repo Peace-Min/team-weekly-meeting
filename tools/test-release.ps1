@@ -39,7 +39,7 @@ for ($attempt=0; $attempt -lt 200; $attempt++) {
     }
     Start-Sleep -Milliseconds 50
 }
-if (-not $qaProcess.WaitForExit(45000)) { throw 'Smoke test timed out' }
+if (-not $qaProcess.WaitForExit(120000)) { $qaProcess.Kill(); throw 'Smoke test timed out' }
 if (-not $captured) { throw 'Could not inspect the running window icon' }
 $result = Get-Content -LiteralPath "$env:TEMP/TeamWeeklyMeeting-smoke-result.txt" -Raw
 if ($qaProcess.ExitCode -ne 0 -or $result -notmatch '^PASS:') { throw $result }

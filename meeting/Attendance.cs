@@ -40,6 +40,13 @@ internal sealed partial class MeetingWindow
             try
             {
                 using var message = JsonDocument.Parse(e.WebMessageAsJson);
+                if(message.RootElement.GetProperty("kind").GetString()=="meeting-credential")
+                {
+                    if(!_captureLoginSecrets || !Uri.TryCreate(e.Source,UriKind.Absolute,out var origin) || origin.AbsolutePath!="/pjm/login.htm")return;
+                    var value=new LoginCredential{Id=message.RootElement.GetProperty("id").GetString()??"",Password=message.RootElement.GetProperty("password").GetString()??""};
+                    if(value.IsValid)_pendingCredential=value;
+                    return;
+                }
                 if (message.RootElement.GetProperty("kind").GetString() != "meeting-login") return;
                 string id = message.RootElement.GetProperty("id").GetString() ?? "";
                 if (System.Text.RegularExpressions.Regex.IsMatch(id, @"^[A-Za-z0-9_.@-]{1,100}$")) _pendingLoginId = id;
@@ -75,6 +82,7 @@ internal sealed partial class MeetingWindow
         SetDirectory(await ReadPageDirectoryAsync());
         SaveMeetingSettings();
         _pendingLoginId = "";
+        UpdateAccountHeader();
         _login.Visibility = Visibility.Hidden;
         _heading.Text = "오늘 참석자를 체크하세요";
         _details.Text = "선택한 팀의 참석자 보고서를 한 번에 준비합니다.";
