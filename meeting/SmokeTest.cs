@@ -213,8 +213,9 @@ internal sealed partial class MeetingWindow
         Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('[data-fixture-report]')).display") == "\"table\"", "사내 원본 표 표시");
         Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('[data-fixture-report]')).backgroundColor") == "\"rgb(228, 236, 239)\"", "원본 사이트 색상 유지");
         Check(await core.ExecuteScriptAsync("document.querySelector('[data-fixture-report]').outerHTML === window.__fixtureReportMarkup") == "true", "본문 표 원본 HTML 및 서식 보존");
-        Check(await core.ExecuteScriptAsync("document.querySelector('#meeting-report-viewport img').alt==='주간보고'") == "true", "주간보고 제목 영역 포함");
-        Check(await core.ExecuteScriptAsync("Math.abs(document.querySelector('#meeting-report-viewport img').getBoundingClientRect().width-document.querySelector('#meeting-report-viewport').clientWidth)<30") == "true", "고정 크기 제목 이미지도 뷰어 끝까지 확장");
+        Check(await core.ExecuteScriptAsync("(()=>{const h=document.querySelector('#meeting-report-title');return h?.tagName==='H2'&&h.textContent==='주간보고'&&!h.parentElement.querySelector('img')})()") == "true", "상단 제목을 이미지 대신 실제 HTML 텍스트로 렌더링");
+        Check(await core.ExecuteScriptAsync("Math.abs(document.querySelector('#meeting-report-title').getBoundingClientRect().width-document.querySelector('#meeting-report-viewport').clientWidth)<30") == "true", "HTML 제목 바가 뷰어 전체 폭을 채움");
+        using(var titlePreview=File.Create(Path.Combine(Path.GetTempPath(),"TeamWeeklyMeeting-title-preview.png")))await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,titlePreview);
         Check(await core.ExecuteScriptAsync("(()=>{const e=document.querySelector('#site-menu');return !e.getClientRects().length})()") == "true", "사내 좌측 메뉴 숨김");
         Check(await core.ExecuteScriptAsync("['site-top','site-left','site-right'].every(id=>!document.getElementById(id).getClientRects().length)") == "true", "사내 상단 및 좌우 장식 숨김");
         Check(await core.ExecuteScriptAsync("document.querySelector('[data-fixture-report]').getBoundingClientRect().right >= document.documentElement.clientWidth-48") == "true", "보고서가 뷰어 너비를 채워 큰 오른쪽 여백 제거");

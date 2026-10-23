@@ -16,6 +16,10 @@ internal static class ReportViewport
             const outer = region.closest('table');
             const title = [...outer.querySelectorAll('td[width="600"][height="35"]')]
               .find(td => td.closest('table') === outer);
+            if(title){
+              const heading=document.createElement('h2');heading.id='meeting-report-title';heading.textContent='주간보고';
+              title.replaceChildren(heading);title.dataset.meetingTitleCell='';
+            }
             const frame = document.createElement('table');
             frame.setAttribute('width','600'); frame.setAttribute('border','0');
             frame.setAttribute('cellpadding','0'); frame.setAttribute('cellspacing','0');
@@ -30,7 +34,8 @@ internal static class ReportViewport
             +'body > :not(#meeting-report-viewport){display:none!important}'
             +'#meeting-report-viewport{display:block;margin:0;padding:0;width:100%;box-sizing:border-box}'
             +'#meeting-report-viewport > table{margin:0!important}'
-            +'#meeting-report-viewport td[height="35"] > img[width="600"]{display:block;width:100%!important;height:35px!important}'
+            +'#meeting-report-viewport td[data-meeting-title-cell]{padding:0!important}'
+            +'#meeting-report-title{display:flex;align-items:center;box-sizing:border-box;width:100%;min-height:35px;margin:0;padding:6px 24px;background:#f4f4f4;border-bottom:1px solid #ccc;color:#3f5c65;font:700 16px/22px "Malgun Gothic",sans-serif;letter-spacing:1px}'
             +'#meeting-report-viewport > table,#meeting-report-viewport table[width="600"],'
             +'#meeting-report-viewport table[width="560"]{width:100%!important;max-width:100%!important}'
             +'#meeting-report-viewport td[width="600"],#meeting-report-viewport td[width="560"]{width:auto!important}';
