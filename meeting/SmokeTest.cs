@@ -159,10 +159,11 @@ internal sealed partial class MeetingWindow
             await Task.Delay(100);popup.UpdateLayout();
             var sections=Descendants((DependencyObject)popup.Content).OfType<System.Windows.Controls.Expander>().ToArray();
             Require(sections.Length==ReadReleaseHistory().Length && sections[0].IsExpanded && sections.Skip(1).All(s=>!s.IsExpanded),"현재 버전만 펼치고 이전 버전은 접어서 표시");
-            sections[1].IsExpanded=true;popup.UpdateLayout();
+            int drawingRelease=Array.FindIndex(ReadReleaseHistory(),entry=>entry.Notes.Any(note=>note.Contains("형광펜")));
+            sections[drawingRelease].IsExpanded=true;popup.UpdateLayout();
             var text=Descendants((DependencyObject)popup.Content).OfType<System.Windows.Controls.TextBlock>().Select(t=>t.Text).ToArray();
             versionFields=text.Any(t=>t.Contains(AppVersion)) && text.Any(t=>t.Contains("1.0.0")) && text.Any(t=>t.Contains("형광펜"));
-            sections[1].IsExpanded=false;popup.UpdateLayout();
+            sections[drawingRelease].IsExpanded=false;popup.UpdateLayout();
             var content=(FrameworkElement)popup.Content;
             var bitmap=new RenderTargetBitmap((int)content.ActualWidth,(int)content.ActualHeight,96,96,PixelFormats.Pbgra32);
             var visual=new DrawingVisual();

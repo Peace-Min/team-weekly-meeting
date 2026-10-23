@@ -1,4 +1,15 @@
-# Release validation: 1.1.1
+# Release validation: 1.1.2
+
+Validated on Windows on 2026-10-23.
+
+- Published and installed EXE icons match the current source ICO pixel for pixel at native small and large sizes. The running window still fills its 32px icon with transparent corners.
+- Real upgrade from the generated 1.1.1 installer to 1.1.2: installed EXE matches the publish payload; versioned ICO matches the source hash; the existing Start menu shortcut changes to the new ICO path; uninstall registration uses that same icon.
+- Installer requests an Explorer association/icon refresh, without deleting the user's icon cache or restarting Explorer.
+- Upgraded installed app: **133 checks passed** with the private fixture, 84 intercepted requests and 10 report POSTs. One earlier run failed the existing CDP mouse eraser check; the same installer passed on rerun without product changes. Icon/shortcut checks passed in both runs.
+- Uninstall removed the isolated app, shortcut and registration; pre-existing settings remained unchanged.
+- Reproduce installation/shortcut QA with `pwsh -File tools/test-installer.ps1`; optionally pass `-PreviousInstaller <older-setup.exe>` to verify an actual upgrade. QA refuses to replace an existing registered installation or Start menu shortcut.
+
+## Previous release: 1.1.1
 
 Validated on Windows on 2026-10-23.
 

@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $dependencyFile = [System.IO.Path]::ChangeExtension((Resolve-Path -LiteralPath $ExePath).Path, '.deps.json')
 if ((Get-Content -LiteralPath $dependencyFile -Raw) -match 'MySqlConnector|TaskCalendarWidget') { throw 'Unexpected database/calendar assembly dependency' }
 Write-Output 'DEPENDENCY PASS: no MySQL driver or calendar assembly'
+& "$PSScriptRoot/test-icon.ps1" -ExePath $ExePath
 Add-Type -AssemblyName System.Drawing
 if (-not ('MeetingIconAudit' -as [type])) {
     Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class MeetingIconAudit { [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint m, IntPtr w, IntPtr l); }'

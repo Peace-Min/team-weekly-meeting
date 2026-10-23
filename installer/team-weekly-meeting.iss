@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.1"
+  #define MyAppVersion "1.1.2"
 #endif
 #ifndef AppPublishDir
   #define AppPublishDir "..\dist\app-web"
@@ -7,6 +7,7 @@
 #define MyAppName "NETCUS 팀 주간보고"
 #define MyAppExeName "TeamWeeklyMeeting.exe"
 #define RuntimeFile "MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
+#define AppIconName "TeamWeeklyMeeting-" + MyAppVersion + ".ico"
 
 [Setup]
 SourceDir={#SourcePath}
@@ -25,7 +26,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 SetupIconFile=..\meeting\Assets\company.ico
-UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallDisplayIcon={app}\Assets\{#AppIconName}
+; Refresh Explorer after replacing an existing shortcut/icon.
+ChangesAssociations=yes
 OutputDir=..\dist\installer
 OutputBaseFilename=NETCUS-TeamWeeklyMeeting-Setup-v{#MyAppVersion}-win-x64
 ; Keep the offline-runtime build usable on machines with limited free memory.
@@ -46,11 +49,12 @@ Name: "desktopicon"; Description: "바탕화면 바로가기 만들기"; GroupDe
 
 [Files]
 Source: "{#AppPublishDir}\*"; DestDir: "{app}"; Excludes: "*.pdb,*.xml"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\meeting\Assets\company.ico"; DestDir: "{app}\Assets"; DestName: "{#AppIconName}"; Flags: ignoreversion
 Source: "..\redist\{#RuntimeFile}"; Flags: dontcopy
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\{#AppIconName}"; IconIndex: 0
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\{#AppIconName}"; IconIndex: 0; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{#MyAppName} 실행"; Flags: nowait postinstall skipifsilent

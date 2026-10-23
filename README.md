@@ -73,3 +73,5 @@ WebView2 재배포 파일의 Microsoft 서명을 확인합니다.
 기존 캘린더에서 가져온 코드와 로고 출처는 [PROVENANCE](PROVENANCE.md), 변경 내역은 [CHANGELOG](CHANGELOG.md)에 기록했습니다.
 릴리스의 실제 설치·제거 및 아이콘·기능 검증 결과는 [VALIDATION](VALIDATION.md)에 있습니다.
 다음 버전의 번호·변경 내역·태그 관리 절차는 [VERSIONING](VERSIONING.md)에 있습니다.
+
+설치 바로가기 아이콘은 버전별 ICO 파일을 사용하고 설치 완료 시 Windows에 갱신을 요청합니다. 이전에 작업표시줄에 고정한 항목만 옛 아이콘으로 남으면 고정을 해제하고 새 시작 메뉴 바로가기에서 다시 고정하세요.
