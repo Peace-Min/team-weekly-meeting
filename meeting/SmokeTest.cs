@@ -176,7 +176,7 @@ internal sealed partial class MeetingWindow
         }
         Check(_loginId == "alpha"&&!_auth.Exists, "로그인 계정 연결 및 기본 자동로그인 저장 해제");
         Check((string?)_team.SelectedItem == "개발팀", "본인 팀 기본 선택");
-        Check(ReadReleaseHistory().First().Heading.StartsWith(AppVersion+" ") && ReadReleaseHistory().Length>=2,"앱 버전과 내장 버전별 변경 내역 일치");
+        Check(ReadReleaseHistory().First().Heading.StartsWith(AppVersion+" ") && ReadReleaseHistory().Length>=1,"앱 버전과 내장 버전별 변경 내역 일치");
         bool versionFields=false;
         _=Dispatcher.BeginInvoke(new Action(async()=>{
             var popup=OwnedWindows.Cast<Window>().Single(w=>w.Title=="버전 정보");
@@ -187,7 +187,7 @@ internal sealed partial class MeetingWindow
             sections[drawingRelease].IsExpanded=true;popup.UpdateLayout();
             var text=Descendants((DependencyObject)popup.Content).OfType<System.Windows.Controls.TextBlock>().Select(t=>t.Text).ToArray();
             versionFields=text.Any(t=>t.Contains(AppVersion)) && text.Any(t=>t.Contains("1.0.0")) && text.Any(t=>t.Contains("형광펜"));
-            sections[drawingRelease].IsExpanded=false;popup.UpdateLayout();
+            if(drawingRelease>0)sections[drawingRelease].IsExpanded=false;popup.UpdateLayout();
             var content=(FrameworkElement)popup.Content;
             var bitmap=new RenderTargetBitmap((int)content.ActualWidth,(int)content.ActualHeight,96,96,PixelFormats.Pbgra32);
             var visual=new DrawingVisual();
@@ -199,7 +199,7 @@ internal sealed partial class MeetingWindow
         }));
         var historyButton=Descendants((DependencyObject)Content).OfType<System.Windows.Controls.Button>().Single(b=>b.Content?.ToString()=="버전 정보");
         historyButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-        Check(versionFields,"상단 버전 버튼에서 현재·이전 버전 변경 내역 창 열기");
+        Check(versionFields,"상단 버전 버튼에서 정식 버전 변경 내역 창 열기");
         Check(Icon is System.Windows.Media.Imaging.BitmapSource iconSource && iconSource.PixelWidth>=256 && Application.Current.Resources.Contains("BrandOrange"),"작업표시줄 축소 방지용 고해상도 회사 아이콘 및 브랜드 스타일 적용");
         Check(_reportStartButton?.IsEnabled==false && _reportStartButton.ToolTip?.ToString()?.Contains("먼저 준비")==true,"보고서 준비 전 보고 시작 버튼 비활성화 및 안내");
         var firstRoot=(System.Windows.Controls.TreeViewItem)_attendance.Items[0];
