@@ -192,9 +192,13 @@ internal sealed partial class MeetingWindow : Window
         {
             core.NavigationCompleted += async (_, e) =>
             {
-                if (!e.IsSuccess || _closing || !Uri.TryCreate(core.Source, UriKind.Absolute, out var source)
-                    || source.AbsolutePath != "/pjm/pjm_view.jsp") return;
-                try { await core.ExecuteScriptAsync(ReportViewport.Crop); }
+                if (!e.IsSuccess || _closing) return;
+                try
+                {
+                    if (Uri.TryCreate(core.Source, UriKind.Absolute, out var source) && source.AbsolutePath == "/pjm/pjm_view.jsp")
+                        await core.ExecuteScriptAsync(ReportViewport.Crop);
+                    if (_presentation != null) await SetPresentationFlagAsync(web, true);
+                }
                 catch (Exception ex) { if (!_closing) _status.Text = "보고서 영역 표시 실패: " + ex.Message; }
             };
         }

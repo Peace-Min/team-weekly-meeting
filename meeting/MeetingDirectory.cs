@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace TeamWeeklyMeeting;
 
-internal sealed record Member(string Name, string Id, string Unit = "", string Title = "");
+internal sealed record Member(string Name, string Id, string Unit = "", string Title = "", string DisplayLabel = "");
 internal sealed record OrgUnit(string Name, string Parent, int Order);
 
 internal sealed class MeetingDirectory
@@ -26,7 +26,7 @@ internal sealed class MeetingDirectory
             Units = root.GetProperty("units").EnumerateArray().Select(u => new OrgUnit(Text(u, "name"), Text(u, "parent"),
                 u.TryGetProperty("sortOrder", out var order) ? order.GetInt32() : 0)).OrderBy(u => u.Order).ThenBy(u => u.Name, StringComparer.Ordinal).ToArray(),
             Members = root.GetProperty("members").EnumerateArray().Select(m => new Member(Text(m, "name"), Text(m, "loginId"),
-                Text(m, "orgUnit"), Text(m, "title"))).Where(m => m.Id.Length > 0).DistinctBy(m => m.Id).ToArray()
+                Text(m, "orgUnit"), Text(m, "title"), Text(m, "displayLabel"))).Where(m => m.Id.Length > 0).DistinctBy(m => m.Id).ToArray()
         };
     }
 

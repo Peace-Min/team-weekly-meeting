@@ -110,7 +110,7 @@ internal sealed partial class MeetingWindow
           <tr><td colspan='2' bgcolor='#8F8F8F'><font face='Wingdings'>w</font><b>개발팀</b></td></tr>
           <tr><td></td><td><a href='/pjm/pjm.jsp?id=alpha'>김민준 책임</a></td></tr>
           <tr><td colspan='2' bgcolor='#EFEFEF'><b>플랫폼파트</b></td></tr>
-          <tr><td></td><td><a href='/pjm/pjm.jsp?id=beta'>이서연 선임</a></td></tr>
+          <tr><td></td><td><a href='/pjm/pjm.jsp?id=beta'>이서연&nbsp;&nbsp;선임</a></td></tr>
           <tr><td></td><td><a href='/pjm/pjm.jsp?id=empty'>박지호 연구원</a></td></tr>
           <tr><td colspan='2' bgcolor='#EFEFEF'><b>플랫폼파트</b></td></tr>
           <tr><td></td><td><a href='/pjm/pjm.jsp?id=beta'>이서연 선임</a></td></tr>
@@ -333,6 +333,12 @@ internal sealed partial class MeetingWindow
         Check(_presentation!=null && _presentation.WindowStyle==WindowStyle.None && _presentation.WindowState==WindowState.Maximized, "보고 모드 전체 화면 및 창 테두리 숨김");
         Check(!_viewer.Children.Contains(_pages) && ((System.Windows.Controls.Grid)_presentation!.Content).Children.Count==2, "보고 모드에 설정 레이아웃 없이 보고서만 표시");
         Check(await core.ExecuteScriptAsync("document.documentElement.classList.contains('meeting-presenting')")=="true", "보고 모드 브라우저 입력 활성화");
+        Check(_reports[1].Member.DisplayLabel=="이서연\u00a0\u00a0선임" &&
+            await core.ExecuteScriptAsync("""
+                (()=>{const f=document.querySelector('#meeting-presenter-footer'),p=f.firstElementChild,n=f.lastElementChild;
+                return f.getBoundingClientRect().top>innerHeight&&getComputedStyle(p).visibility==='hidden'
+                  &&n.querySelector('strong').textContent==='다음'&&n.querySelector('small').textContent==='이서연\u00a0\u00a0선임'})()
+                """)=="true","본문 끝에만 이동 버튼 표시, 첫 순서의 이전 숨김, 사이트 표시명 그대로 사용");
         Check(!core.Settings.AreBrowserAcceleratorKeysEnabled && !core.Settings.AreDefaultContextMenusEnabled, "보고 모드 중 브라우저 이동 단축키 및 메뉴 비활성화");
         Check(!core.Settings.IsZoomControlEnabled,"그리기 위치 보호를 위해 발표 중 실수로 Ctrl+휠 배율 변경 방지");
         Check(await core.ExecuteScriptAsync("getComputedStyle(document.querySelector('#fixture-action')).display")=="\"none\"", "보고 모드에서 사이트 편집 버튼 숨김");
@@ -404,6 +410,39 @@ internal sealed partial class MeetingWindow
         await core.CallDevToolsProtocolMethodAsync("Input.dispatchMouseEvent","{\"type\":\"mouseWheel\",\"x\":200,\"y\":200,\"deltaX\":0,\"deltaY\":250}");
         await Task.Delay(200);
         Check(double.Parse(await core.ExecuteScriptAsync("window.scrollY"),System.Globalization.CultureInfo.InvariantCulture)>dragY, "마우스 휠로 본문 스크롤");
+        await ZoomAsync(100);
+        await core.ExecuteScriptAsync("window.scrollTo(0,document.documentElement.scrollHeight)");
+        await Task.Delay(150);
+        Check(await core.ExecuteScriptAsync("""
+            (()=>{const b=document.querySelector('#meeting-presenter-footer [data-direction=next]').getBoundingClientRect();
+            const tools=document.querySelector('#meeting-drawing-tools').getBoundingClientRect();
+            return b.top>=0&&b.bottom<tools.top&&Math.abs(b.width*2-160)<2})()
+            """)=="true","200%에서도 하단 버튼이 화면에 들어오고 필기 도구와 겹치지 않음");
+        await ZoomAsync(-100);
+        await InkMode("pen");
+        await core.ExecuteScriptAsync("window.scrollTo(0,document.documentElement.scrollHeight)");
+        await Task.Delay(150);
+        using(var footer=File.Create(Path.Combine(Path.GetTempPath(),"TeamWeeklyMeeting-presenter-footer-preview.png")))
+            await core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,footer);
+        using(var point=JsonDocument.Parse(await core.ExecuteScriptAsync("""
+            (()=>{const r=document.querySelector('#meeting-presenter-footer [data-direction=next]').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()
+            """)))
+        {
+            double x=point.RootElement.GetProperty("x").GetDouble(),y=point.RootElement.GetProperty("y").GetDouble();
+            await InkDrag(x,y,x,y);
+        }
+        Check(_people.SelectedIndex==1 && await core.ExecuteScriptAsync("document.querySelectorAll('#meeting-ink path').length")=="1",
+            "펜 모드에서도 실제 마우스로 다음 버튼 이동, 불필요한 획 생성 없음");
+        var betaCore = _reports[1].Web.CoreWebView2;
+        await betaCore.ExecuteScriptAsync("document.querySelector('#meeting-presenter-footer [data-direction=next]').click()");
+        await Task.Delay(150);
+        Check(_people.SelectedIndex==2 && _fallbackNavigation[0].IsVisible && _fallbackNavigation[1].Visibility==Visibility.Hidden &&
+            ((System.Windows.Controls.TextBlock)((System.Windows.Controls.StackPanel)_fallbackNavigation[0].Content).Children[1]).Text=="이서연\u00a0\u00a0선임",
+            "보고서가 없는 마지막 발표자도 이전 표시명 제공, 다음 버튼만 숨김");
+        var fallbackPeer = new System.Windows.Automation.Peers.ButtonAutomationPeer(_fallbackNavigation[0]);
+        ((System.Windows.Automation.Provider.IInvokeProvider)fallbackPeer).Invoke();
+        await Task.Delay(150);
+        Check(_people.SelectedIndex==1,"미작성 안내의 이전 버튼으로 복귀");
         HandlePresentationKey("End");
         Check(_people.SelectedIndex==2 && _presentationEmpty.Visibility==Visibility.Visible && _pages.Visibility==Visibility.Hidden, "미작성 보고서는 사이트 메뉴 대신 해당 사람의 상태만 표시");
         HandlePresentationKey("ArrowRight");Check(_people.SelectedIndex==2, "마지막 발표자에서 다음 키는 목록 범위를 넘지 않음");
@@ -417,6 +456,7 @@ internal sealed partial class MeetingWindow
         Check(core.Settings.AreBrowserAcceleratorKeysEnabled && core.Settings.AreDefaultContextMenusEnabled, "보고 모드 종료 시 브라우저 단축키 및 메뉴 복원");
         Check(core.Settings.IsZoomControlEnabled,"발표 종료 후 일반 화면 배율 조작 복원");
         Check(await core.ExecuteScriptAsync("document.documentElement.classList.contains('meeting-presenting')")=="false", "종료 후 드래그·키보드 가로채기 해제");
+        Check(await core.ExecuteScriptAsync("document.getElementById('meeting-presenter-footer')===null")=="true","발표 종료 뒤 일반 보고서에서 이동 버튼 제거");
         await core.ExecuteScriptAsync("document.querySelector('#fixture-action').click()");
         Check(await core.ExecuteScriptAsync("!!window.actionTaken")=="true", "보고 모드 종료 후 사이트 직접 조작 복원");
         await StartPresentationAsync();await Task.Delay(100);HandlePresentationKey("Escape");await Task.Delay(150);

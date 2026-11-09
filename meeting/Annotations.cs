@@ -37,6 +37,9 @@ internal sealed partial class MeetingWindow
             if(!tools)return;
             tools.style.transform=`translateX(-50%) scale(${scale})`;
             tools.style.bottom=(12*scale)+'px';tools.style.maxWidth=Math.max(180,innerWidth/scale-24)+'px';
+            // Keep the in-flow navigation above the fixed drawing toolbar, even when it wraps.
+            tools.parentElement.style.setProperty('--meeting-ui-scale',scale);
+            tools.parentElement.style.setProperty('--meeting-footer-clearance',(tools.offsetHeight+24)+'px');
           };
           const undo=()=>{stop();if(history.length){strokes=history.pop();render();log('undo')}};
           const erase=(x,y)=>{
@@ -93,7 +96,7 @@ internal sealed partial class MeetingWindow
             sizes.addEventListener('change',()=>width=Number(sizes.value));options.append(sizes);
             button('되돌리기','되돌리기 (Ctrl+Z) · 최대 30회',undo).dataset.action='undo';
             button('전체 지우기','현재 발표자의 그림 모두 지우기',()=>{stop();if(strokes.length){checkpoint();strokes=[];render();log('clear')}}).dataset.action='clear';
-            tools.append(options);viewport.append(svg,tools);layout();return true;
+            tools.append(options);viewport.append(svg,tools);new ResizeObserver(layout).observe(tools);layout();return true;
           };
           window.__meetingDrawingActive=()=>active&&mode!=='move';
           window.__meetingAnnotationScale=value=>{scale=value;layout()};

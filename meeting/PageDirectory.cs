@@ -39,11 +39,12 @@ internal sealed partial class MeetingWindow
               if (!['www.netcus.com','netcus.com'].includes(url.hostname) || !['https:','http:'].includes(url.protocol) || url.pathname !== '/pjm/pjm.jsp') continue;
               const id = url.searchParams.get('id') || '';
               if (!/^[A-Za-z0-9_.@-]{1,100}$/.test(id) || ids.has(id)) continue;
-              const label = clean(link.textContent);
+              const displayLabel = (link.innerText || link.textContent || '').trim();
+              const label = clean(displayLabel);
               if (!label) continue;
               const parts = /^(.*?)\s+(\S+)$/.exec(label);
               ids.add(id);
-              members.push({loginId:id,name:parts ? parts[1] : label,title:parts ? parts[2] : '',orgUnit:section});
+              members.push({loginId:id,name:parts ? parts[1] : label,title:parts ? parts[2] : '',orgUnit:section,displayLabel});
             }
           }
           return {found:units.length > 0 && members.length > 0,
