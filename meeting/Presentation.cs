@@ -174,7 +174,7 @@ internal sealed partial class MeetingWindow
     {
         var text = new StackPanel { Width = 134 };
         text.Children.Add(new TextBlock { Text = heading, FontSize = 15, FontWeight = FontWeights.Bold });
-        text.Children.Add(new TextBlock { FontSize = 12, Foreground = Brushes.DimGray, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) });
+        text.Children.Add(new TextBlock { FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("Ink"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) });
         var button = new Button { Content = text, Width = 160, MinHeight = 44, Margin = new Thickness(6, 0, 6, 0) };
         if (step > 0) { button.Background = (Brush)FindResource("BrandSoft"); button.BorderBrush = (Brush)FindResource("BrandOrange"); }
         button.Click += (_, _) => MovePresentationByMouse(step);
@@ -232,7 +232,7 @@ internal sealed partial class MeetingWindow
                 +'#meeting-presenter-footer button:hover{background:#ffe0c2}'
                 +'#meeting-presenter-footer button:focus-visible{outline:2px solid #873800;outline-offset:2px}'
                 +'#meeting-presenter-footer strong,#meeting-presenter-footer small{display:block}'
-                +'#meeting-presenter-footer small{margin-top:3px;color:#535e6b;font-size:12px;white-space:pre-wrap}';
+                +'#meeting-presenter-footer small{margin-top:3px;color:#282b30;font-size:16px;font-weight:600;white-space:pre-wrap}';
               document.head.append(style);
             }
             document.getElementById('meeting-presenter-footer')?.remove();

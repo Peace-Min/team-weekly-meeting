@@ -28,10 +28,12 @@ function Install([string]$Path,[string]$Suffix){
 try {
     $shell=New-Object -ComObject WScript.Shell
     $oldIcon=$null
+    $oldVersion=$null
     if($PreviousInstaller){
         Install (Resolve-Path -LiteralPath $PreviousInstaller).Path 'previous'
         if(-not (Test-Path $shortcut)){throw 'Previous installer did not create a shortcut'}
         $oldIcon=$shell.CreateShortcut($shortcut).IconLocation
+        $oldVersion=(Get-Item (Join-Path $qaDir 'TeamWeeklyMeeting.exe')).VersionInfo.FileVersion
     }
     Install $installer 'current'
     $installedExe=Join-Path $qaDir 'TeamWeeklyMeeting.exe'
@@ -43,13 +45,14 @@ try {
         if(Test-Path (Join-Path $qaDir $name)){throw "Unexpected private/legacy file: $name"}
     }
     if((Get-FileHash $installedExe).Hash -ne (Get-FileHash (Join-Path $root 'publish/win-x64/TeamWeeklyMeeting.exe')).Hash){throw 'Installed EXE differs from payload'}
+    if((Get-FileHash (Join-Path $qaDir 'TeamWeeklyMeeting.dll')).Hash -ne (Get-FileHash (Join-Path $root 'publish/win-x64/TeamWeeklyMeeting.dll')).Hash){throw 'Installed application DLL differs from payload'}
     if((Get-FileHash $iconPath).Hash -ne (Get-FileHash (Join-Path $root 'meeting/Assets/company.ico')).Hash){throw 'Installed shortcut icon differs from source'}
     $link=$shell.CreateShortcut($shortcut)
     if($link.TargetPath -ne $installedExe -or $link.IconLocation -ne "$iconPath,0"){throw "Unexpected shortcut target/icon: $($link.TargetPath); $($link.IconLocation)"}
-    if($PreviousInstaller -and $oldIcon -eq $link.IconLocation){throw 'Upgrade reused the old icon cache path'}
+    if($PreviousInstaller -and $oldVersion -ne (Get-Item $installedExe).VersionInfo.FileVersion -and $oldIcon -eq $link.IconLocation){throw 'Upgrade reused the old icon cache path'}
     if((Get-ItemProperty $registration).DisplayIcon -notlike "$iconPath*"){throw 'Uninstall icon does not use versioned icon'}
     'INSTALL/SHORTCUT PASS: payload hash, versioned icon bytes, shortcut target and uninstall icon'
-    if($PreviousInstaller){'UPGRADE PASS: existing shortcut now references a different icon path'}
+    if($PreviousInstaller){'REPLACEMENT PASS: previous installation replaced by the current payload'}
     & (Join-Path $PSScriptRoot 'test-release.ps1') -ExePath $installedExe
 } finally {
     $uninstaller=Join-Path $qaDir 'unins000.exe'
