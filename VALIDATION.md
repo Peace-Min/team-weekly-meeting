@@ -1,4 +1,13 @@
-# Release validation: 1.0.0
+# 배포 검증: 1.1.0
+
+2026-11-09 Windows x64에서 검증했습니다.
+
+- `build-installer.cmd`로 앱과 설치파일을 생성했습니다. 앱과 설치파일의 버전은 1.1.0이며, 설치파일 SHA-256이 함께 생성한 체크섬과 일치했습니다.
+- 정식 v1.0.0 위에 v1.1.0을 설치해 실행 파일과 아이콘 해시, 바로가기, 제거 등록을 확인했습니다. 시험용 앱을 제거한 뒤 기존 설정이 보존됐습니다.
+- 설치된 앱에서 실제 WPF와 WebView2로 206개 검사가 통과했습니다. 로컬 응답 202건, 모의 보고서 POST 10회입니다. 발표자 이동의 세부 내용은 [Wiki](docs/wiki/Presenter-Navigation.md)에 있습니다.
+- 실제 사내 계정과 네트워크는 모의 환경 검증에 포함되지 않았습니다.
+
+## 이전 배포 검증: 1.0.0
 
 First public distribution baseline: 2026-10-23. Earlier development version numbers are archived in [development validation](docs/development/VALIDATION.md); they are not formal release numbers.
 
